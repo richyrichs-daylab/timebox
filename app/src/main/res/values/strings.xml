@@ -8,15 +8,37 @@
 
     <string name="settings">Settings</string>
     <string name="set_left_arrow">Left arrow</string>
+    <string name="set_lock">Lock symbol</string>
     <string name="set_date_format">Date format: %1$s</string>
     <string name="set_rows">Rows</string>
     <string name="set_columns">Columns</string>
     <string name="set_day_start">Day start</string>
+    <string name="set_mode">Mode: %1$s</string>
     <string name="set_priorities_count">Priorities</string>
     <string name="set_title_priorities">Title: Priorities</string>
     <string name="set_title_braindump">Title: Braindump</string>
     <string name="set_title_timebox">Title: Timebox</string>
     <string name="set_wrap">Text wrap</string>
+    <string name="set_zoom">Zoom</string>
+    <string name="set_drawing">Drawing mode</string>
+
+    <string name="mode_system">Default</string>
+    <string name="mode_light">Light</string>
+    <string name="mode_dark">Dark</string>
+
+    <string name="backup_export">Export backup</string>
+    <string name="backup_import">Import backup</string>
+    <string name="backup_export_ok">Backup exported</string>
+    <string name="backup_import_ok">Backup imported</string>
+    <string name="backup_failed">Something went wrong</string>
+
+    <string name="pw_numeric">Create numeric password</string>
+    <string name="pw_text">Create character password</string>
+    <string name="pw_delete">Delete password</string>
+    <string name="pw_cancel">Cancel</string>
+    <string name="pw_confirm">Confirm</string>
+    <string name="pw_hint_min">At least 4 characters</string>
+    <string name="pw_wrong">Wrong password</string>
 
     <string name="cd_prev">Previous day</string>
     <string name="cd_next">Next day</string>
@@ -24,4 +46,7 @@
     <string name="cd_lock">Lock-in mode</string>
     <string name="cd_date">Choose date</string>
     <string name="cd_back">Back</string>
+    <string name="cd_pen">Pen</string>
+    <string name="cd_eraser">Eraser</string>
+    <string name="cd_undo">Undo</string>
 </resources>
