@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Tagesplaner</string>
+
+    <string name="priorities">Prioritäten</string>
+    <string name="braindump">Braindump</string>
+    <string name="timebox">Timebox</string>
+
+    <string name="settings">Einstellungen</string>
+    <string name="set_left_arrow">Linker Pfeil</string>
+    <string name="set_date_format">Datumsformat: %1$s</string>
+    <string name="set_rows">Zeilen</string>
+    <string name="set_columns">Spalten</string>
+    <string name="set_day_start">Tagesbeginn</string>
+    <string name="set_priorities_count">Prioritäten</string>
+    <string name="set_title_priorities">Titel: Prioritäten</string>
+    <string name="set_title_braindump">Titel: Braindump</string>
+    <string name="set_title_timebox">Titel: Timebox</string>
+    <string name="set_wrap">Textumbruch</string>
+
+    <string name="cd_prev">Voriger Tag</string>
+    <string name="cd_next">Nächster Tag</string>
+    <string name="cd_settings">Einstellungen</string>
+    <string name="cd_lock">Lock-in-Modus</string>
+    <string name="cd_date">Datum wählen</string>
+    <string name="cd_back">Zurück</string>
+</resources>
