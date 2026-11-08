@@ -1,18 +1,26 @@
 package com.example.dayplanner.ui
 
 import android.app.Application
+import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.dayplanner.data.DayData
 import com.example.dayplanner.data.DayRepository
 import com.example.dayplanner.data.DayState
+import com.example.dayplanner.data.InkStroke
+import com.example.dayplanner.data.PasswordInfo
 import com.example.dayplanner.data.Settings
 import com.example.dayplanner.data.SettingsRepository
+import com.example.dayplanner.data.settingsFromJson
+import com.example.dayplanner.data.toJson
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import org.json.JSONObject
 import java.time.LocalDate
 
 class PlannerViewModel(app: Application) : AndroidViewModel(app) {
@@ -21,6 +29,12 @@ class PlannerViewModel(app: Application) : AndroidViewModel(app) {
 
     val settings: StateFlow<Settings?> =
         settingsRepo.flow.stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
+    val password: StateFlow<PasswordInfo?> =
+        settingsRepo.passwordFlow.stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
+    private val _unlocked = MutableStateFlow(false)
+    val unlocked: StateFlow<Boolean> = _unlocked
 
     private val _day = MutableStateFlow<DayState?>(null)
     val day: StateFlow<DayState?> = _day
@@ -43,6 +57,8 @@ class PlannerViewModel(app: Application) : AndroidViewModel(app) {
 
     fun shiftDay(delta: Long) = selectDate(currentDate.plusDays(delta))
 
+    fun goToday() = selectDate(LocalDate.now())
+
     // ---------- Bearbeiten ----------
 
     fun setPriority(date: LocalDate, index: Int, text: String) =
@@ -53,6 +69,9 @@ class PlannerViewModel(app: Application) : AndroidViewModel(app) {
 
     fun setBraindump(date: LocalDate, text: String) =
         edit(date) { it.copy(braindump = text) }
+
+    fun addStroke(date: LocalDate, stroke: InkStroke) =
+        edit(date) { it.copy(strokes = it.strokes + stroke) }
 
     private fun edit(date: LocalDate, change: (DayData) -> DayData) {
         val cur = _day.value
@@ -88,6 +107,64 @@ class PlannerViewModel(app: Application) : AndroidViewModel(app) {
             if (history.isEmpty()) history[Settings.EPOCH] = s.priorities
             history[LocalDate.now().toString()] = count
             s.copy(priorities = count, priorityHistory = history)
+        }
+    }
+
+    // ---------- Passwort ----------
+
+    fun createPassword(type: Int, secret: String) {
+        viewModelScope.launch {
+            settingsRepo.setPassword(type, secret)
+            _unlocked.value = true
+        }
+    }
+
+    fun deletePassword() {
+        viewModelScope.launch { settingsRepo.clearPassword() }
+    }
+
+    fun tryUnlock(input: String, onWrong: () -> Unit) {
+        val info = password.value ?: return
+        viewModelScope.launch {
+            if (settingsRepo.check(info, input)) _unlocked.value = true else onWrong()
+        }
+    }
+
+    // ---------- Backup ----------
+
+    fun exportBackup(uri: Uri, onResult: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            val ok = runCatching {
+                val root = JSONObject()
+                    .put("app", "dayplanner")
+                    .put("version", 1)
+                    .put("settings", settingsRepo.current().toJson())
+                    .put("days", dayRepo.exportAll())
+                withContext(Dispatchers.IO) {
+                    getApplication<Application>().contentResolver.openOutputStream(uri, "wt")!!
+                        .use { it.write(root.toString().toByteArray(Charsets.UTF_8)) }
+                }
+            }.isSuccess
+            onResult(ok)
+        }
+    }
+
+    fun importBackup(uri: Uri, onResult: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            val ok = runCatching {
+                val text = withContext(Dispatchers.IO) {
+                    getApplication<Application>().contentResolver.openInputStream(uri)!!
+                        .use { it.readBytes().toString(Charsets.UTF_8) }
+                }
+                val root = JSONObject(text)
+                require(root.optString("app") == "dayplanner")
+                root.optJSONObject("days")?.let { dayRepo.importAll(it) }
+                root.optJSONObject("settings")?.let { so ->
+                    settingsRepo.update { settingsFromJson(so) }
+                }
+                selectDate(currentDate)
+            }.isSuccess
+            onResult(ok)
         }
     }
 }
