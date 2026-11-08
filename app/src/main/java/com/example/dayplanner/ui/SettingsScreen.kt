@@ -1,8 +1,13 @@
 package com.example.dayplanner.ui
 
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -10,6 +15,7 @@ import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -24,8 +30,8 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -35,11 +41,21 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -48,135 +64,284 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.dayplanner.R
+import com.example.dayplanner.data.Design
+import com.example.dayplanner.data.PasswordInfo
 import java.time.LocalDate
 
 @Composable
 fun SettingsScreen(vm: PlannerViewModel, onBack: () -> Unit) {
     val current by vm.settings.collectAsState()
+    val pwInfo by vm.password.collectAsState()
     val s = current ?: return
+    val skin = LocalSkin.current
+    val ink = skin.ink
     val focus = LocalFocusManager.current
-    val ink = MaterialTheme.colorScheme.onBackground
-    val preview = formatDate(LocalDate.now(), s.dateFormat)
+    val context = LocalContext.current
+    val systemDark = isSystemInDarkTheme()
+    var pwDialog by remember { mutableStateOf<Int?>(null) }
 
-    Column(
-        Modifier
-            .fillMaxSize()
-            .pointerInput(Unit) {
-                detectTapGestures(
-                    onTap = { focus.clearFocus() },
-                    onLongPress = { focus.clearFocus() },
-                )
-            }
-            .background(MaterialTheme.colorScheme.background)
-            .windowInsetsPadding(WindowInsets.safeDrawing)
-            .verticalScroll(rememberScrollState())
-            .padding(16.dp)
-    ) {
-        Box(
+    val preview = formatDate(LocalDate.now(), s.dateFormat)
+    val modeName = stringResource(
+        when (s.themeMode) {
+            1 -> R.string.mode_light
+            2 -> R.string.mode_dark
+            else -> R.string.mode_system
+        }
+    )
+    val modeEnabled = s.designId.supportsMode()
+
+    fun toast(res: Int) = Toast.makeText(context, context.getString(res), Toast.LENGTH_SHORT).show()
+
+    val exportLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/json")
+    ) { uri ->
+        if (uri != null) {
+            vm.exportBackup(uri) { ok -> toast(if (ok) R.string.backup_export_ok else R.string.backup_failed) }
+        }
+    }
+    val importLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        if (uri != null) {
+            vm.importBackup(uri) { ok -> toast(if (ok) R.string.backup_import_ok else R.string.backup_failed) }
+        }
+    }
+
+    Box(Modifier.fillMaxSize()) {
+        SkinBackground(skin, Modifier.fillMaxSize())
+
+        Column(
             Modifier
-                .fillMaxWidth()
-                .height(52.dp)
+                .fillMaxSize()
+                .pointerInput(Unit) {
+                    detectTapGestures(
+                        onTap = { focus.clearFocus() },
+                        onLongPress = { focus.clearFocus() },
+                    )
+                }
+                .windowInsetsPadding(WindowInsets.safeDrawing)
+                .verticalScroll(rememberScrollState())
+                .padding(16.dp)
         ) {
             Box(
                 Modifier
-                    .align(Alignment.CenterStart)
-                    .size(44.dp)
-                    .tapOrHold(onBack),
-                contentAlignment = Alignment.Center,
+                    .fillMaxWidth()
+                    .height(52.dp)
             ) {
-                Chevron(left = true, color = ink, modifier = Modifier.size(22.dp))
-            }
-            Text(
-                text = stringResource(R.string.settings),
-                modifier = Modifier.align(Alignment.Center),
-                fontWeight = FontWeight.ExtraBold,
-                fontSize = 26.sp,
-            )
-        }
-        Spacer(Modifier.height(16.dp))
-
-        Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
-            // ---------- linke Spalte ----------
-            Column(
-                Modifier.weight(1f).padding(end = 12.dp),
-                verticalArrangement = Arrangement.spacedBy(18.dp),
-            ) {
-                SettingRow(stringResource(R.string.set_left_arrow)) {
-                    Switch(checked = s.showLeftArrow, onCheckedChange = { v -> vm.updateSettings { it.copy(showLeftArrow = v) } })
+                Box(
+                    Modifier
+                        .align(Alignment.CenterStart)
+                        .size(44.dp)
+                        .semantics { contentDescription = "Back"; role = Role.Button }
+                        .tapOrHold(onBack),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Chevron(left = true, color = ink, modifier = Modifier.size(22.dp))
                 }
-                SettingRow(stringResource(R.string.set_date_format, preview)) {
-                    SquareButton(s.dateFormat.toString()) {
-                        vm.updateSettings { it.copy(dateFormat = it.dateFormat % 4 + 1) }
+                Text(
+                    text = stringResource(R.string.settings),
+                    color = ink,
+                    modifier = Modifier.align(Alignment.Center),
+                    fontWeight = FontWeight.ExtraBold,
+                    fontSize = 26.sp,
+                )
+            }
+            Spacer(Modifier.height(16.dp))
+
+            Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
+                // ---------- linke Spalte ----------
+                Column(
+                    Modifier.weight(1f).padding(end = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(18.dp),
+                ) {
+                    SettingRow(stringResource(R.string.set_left_arrow)) {
+                        SkinSwitch(s.showLeftArrow) { v -> vm.updateSettings { it.copy(showLeftArrow = v) } }
+                    }
+                    SettingRow(stringResource(R.string.set_lock)) {
+                        // Abwählen hebt einen aktiven Lock-in-Modus auf.
+                        SkinSwitch(s.showLock) { v ->
+                            vm.updateSettings { it.copy(showLock = v, locked = if (v) it.locked else false) }
+                        }
+                    }
+                    SettingRow(stringResource(R.string.set_date_format, preview)) {
+                        SquareButton(s.dateFormat.toString()) {
+                            vm.updateSettings { it.copy(dateFormat = it.dateFormat % 4 + 1) }
+                        }
+                    }
+                    SettingRow(stringResource(R.string.set_rows)) {
+                        NumberBox(s.rows, 1..24) { v -> vm.updateSettings { it.copy(rows = v) } }
+                    }
+                    SettingRow(stringResource(R.string.set_columns)) {
+                        SquareButton(s.columns.toString()) {
+                            vm.updateSettings { it.copy(columns = it.columns % 2 + 1) }
+                        }
+                    }
+                    SettingRow(stringResource(R.string.set_day_start)) {
+                        NumberBox(s.dayStart, 0..23) { v -> vm.updateSettings { it.copy(dayStart = v) } }
+                    }
+                    SettingRow(stringResource(R.string.set_mode, modeName)) {
+                        Box(
+                            Modifier
+                                .size(52.dp)
+                                .alpha(if (modeEnabled) 1f else 0.35f)
+                                .border(1.5.dp, ink)
+                                .then(
+                                    if (modeEnabled) {
+                                        Modifier.tapOrHold {
+                                            vm.updateSettings { it.copy(themeMode = (it.themeMode + 1) % 3) }
+                                        }
+                                    } else {
+                                        Modifier
+                                    }
+                                ),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            ModeIcon(s.themeMode, ink, Modifier.size(30.dp))
+                        }
                     }
                 }
-                SettingRow(stringResource(R.string.set_rows)) {
-                    NumberBox(s.rows, 1..24) { v -> vm.updateSettings { it.copy(rows = v) } }
-                }
-                SettingRow(stringResource(R.string.set_columns)) {
-                    NumberBox(s.columns, 1..2) { v -> vm.updateSettings { it.copy(columns = v) } }
-                }
-                SettingRow(stringResource(R.string.set_day_start)) {
-                    NumberBox(s.dayStart, 0..23) { v -> vm.updateSettings { it.copy(dayStart = v) } }
+
+                // ---------- dünner schwarzer Strich ----------
+                Box(Modifier.width(1.dp).fillMaxHeight().background(ink))
+
+                // ---------- rechte Spalte ----------
+                Column(
+                    Modifier.weight(1f).padding(start = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(18.dp),
+                ) {
+                    SettingRow(stringResource(R.string.set_priorities_count)) {
+                        NumberBox(s.priorities, 1..10) { v -> vm.setPriorityCount(v) }
+                    }
+                    SettingRow(stringResource(R.string.set_title_priorities)) {
+                        SkinSwitch(s.showPrioritiesTitle) { v -> vm.updateSettings { it.copy(showPrioritiesTitle = v) } }
+                    }
+                    SettingRow(stringResource(R.string.set_title_braindump)) {
+                        SkinSwitch(s.showBraindumpTitle) { v -> vm.updateSettings { it.copy(showBraindumpTitle = v) } }
+                    }
+                    SettingRow(stringResource(R.string.set_title_timebox)) {
+                        SkinSwitch(s.showTimeboxTitle) { v -> vm.updateSettings { it.copy(showTimeboxTitle = v) } }
+                    }
+                    SettingRow(stringResource(R.string.set_wrap)) {
+                        SkinSwitch(s.wrapText) { v -> vm.updateSettings { it.copy(wrapText = v) } }
+                    }
+                    SettingRow(stringResource(R.string.set_zoom)) {
+                        SkinSwitch(s.zoom) { v -> vm.updateSettings { it.copy(zoom = v) } }
+                    }
+                    SettingRow(stringResource(R.string.set_drawing)) {
+                        SkinSwitch(s.drawing) { v -> vm.updateSettings { it.copy(drawing = v) } }
+                    }
                 }
             }
 
-            // ---------- dünner schwarzer Strich ----------
-            Box(Modifier.width(1.dp).fillMaxHeight().background(ink))
+            Spacer(Modifier.height(24.dp))
 
-            // ---------- rechte Spalte ----------
-            Column(
-                Modifier.weight(1f).padding(start = 12.dp),
-                verticalArrangement = Arrangement.spacedBy(18.dp),
-            ) {
-                SettingRow(stringResource(R.string.set_priorities_count)) {
-                    NumberBox(s.priorities, 1..10) { v -> vm.setPriorityCount(v) }
+            // ---------- Backups ----------
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                WideButton(stringResource(R.string.backup_export), Modifier.fillMaxWidth()) {
+                    exportLauncher.launch("dayplanner-${LocalDate.now()}.json")
                 }
-                SettingRow(stringResource(R.string.set_title_priorities)) {
-                    Switch(checked = s.showPrioritiesTitle, onCheckedChange = { v -> vm.updateSettings { it.copy(showPrioritiesTitle = v) } })
-                }
-                SettingRow(stringResource(R.string.set_title_braindump)) {
-                    Switch(checked = s.showBraindumpTitle, onCheckedChange = { v -> vm.updateSettings { it.copy(showBraindumpTitle = v) } })
-                }
-                SettingRow(stringResource(R.string.set_title_timebox)) {
-                    Switch(checked = s.showTimeboxTitle, onCheckedChange = { v -> vm.updateSettings { it.copy(showTimeboxTitle = v) } })
-                }
-                SettingRow(stringResource(R.string.set_wrap)) {
-                    Switch(checked = s.wrapText, onCheckedChange = { v -> vm.updateSettings { it.copy(wrapText = v) } })
+                WideButton(stringResource(R.string.backup_import), Modifier.fillMaxWidth()) {
+                    importLauncher.launch(arrayOf("*/*"))
                 }
             }
+
+            Spacer(Modifier.height(18.dp))
+
+            // ---------- Passwort ----------
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                WideButton(stringResource(R.string.pw_numeric), Modifier.fillMaxWidth()) {
+                    pwDialog = PasswordInfo.NUMERIC
+                }
+                WideButton(stringResource(R.string.pw_text), Modifier.fillMaxWidth()) {
+                    pwDialog = PasswordInfo.TEXT
+                }
+                WideButton(
+                    stringResource(R.string.pw_delete),
+                    Modifier.fillMaxWidth(),
+                    enabled = (pwInfo?.type ?: PasswordInfo.NONE) != PasswordInfo.NONE,
+                ) {
+                    vm.deletePassword()
+                }
+            }
+
+            Spacer(Modifier.height(24.dp))
+
+            // ---------- Layout-Designs, ohne Beschriftung ----------
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Design.entries.forEachIndexed { index, design ->
+                    DesignTile(
+                        design = design,
+                        selected = s.design == index,
+                        mode = s.themeMode,
+                        systemDark = systemDark,
+                        modifier = Modifier.weight(1f).aspectRatio(0.6f),
+                    ) { vm.updateSettings { it.copy(design = index) } }
+                }
+            }
+            Spacer(Modifier.height(8.dp))
         }
+    }
+
+    pwDialog?.let { type ->
+        PasswordDialog(
+            numeric = type == PasswordInfo.NUMERIC,
+            onCancel = { pwDialog = null },
+            onConfirm = { secret ->
+                vm.createPassword(type, secret)
+                pwDialog = null
+            },
+        )
     }
 }
 
 /** Kasten/Toggle links, Beschriftung rechts dahinter. */
 @Composable
 private fun SettingRow(label: String, control: @Composable () -> Unit) {
+    val skin = LocalSkin.current
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         Box(Modifier.width(56.dp), contentAlignment = Alignment.Center) { control() }
-        Text(label, Modifier.weight(1f), fontSize = 14.sp)
+        Text(label, Modifier.weight(1f), color = skin.ink, fontSize = 14.sp)
     }
 }
 
 @Composable
+private fun SkinSwitch(checked: Boolean, onChange: (Boolean) -> Unit) {
+    val skin = LocalSkin.current
+    Switch(
+        checked = checked,
+        onCheckedChange = onChange,
+        colors = SwitchDefaults.colors(
+            checkedThumbColor = skin.bg,
+            checkedTrackColor = skin.accent,
+            checkedBorderColor = skin.accent,
+            uncheckedThumbColor = skin.ink,
+            uncheckedTrackColor = Color.Transparent,
+            uncheckedBorderColor = skin.ink,
+        ),
+    )
+}
+
+@Composable
 private fun SquareButton(text: String, onClick: () -> Unit) {
+    val ink = LocalSkin.current.ink
     Box(
         Modifier
             .size(52.dp)
-            .border(1.5.dp, MaterialTheme.colorScheme.onBackground)
+            .border(1.5.dp, ink)
             .tapOrHold(onClick),
         contentAlignment = Alignment.Center,
     ) {
-        Text(text, fontWeight = FontWeight.Bold, fontSize = 20.sp)
+        Text(text, color = ink, fontWeight = FontWeight.Bold, fontSize = 20.sp)
     }
 }
 
 @Composable
 private fun NumberBox(value: Int, range: IntRange, onValue: (Int) -> Unit) {
     val focus = LocalFocusManager.current
-    val ink = MaterialTheme.colorScheme.onBackground
+    val ink = LocalSkin.current.ink
     var text by remember(value) { mutableStateOf(value.toString()) }
 
     BasicTextField(
@@ -204,4 +369,48 @@ private fun NumberBox(value: Int, range: IntRange, onValue: (Int) -> Unit) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { inner() }
         },
     )
+}
+
+@Composable
+private fun DesignTile(
+    design: Design,
+    selected: Boolean,
+    mode: Int,
+    systemDark: Boolean,
+    modifier: Modifier,
+    onClick: () -> Unit,
+) {
+    val current = LocalSkin.current
+    val sk = remember(design, mode, systemDark) { resolveSkin(design, mode, systemDark) }
+    Box(
+        modifier
+            .border(
+                if (selected) 3.dp else 1.dp,
+                if (selected) current.ink else current.ink.copy(alpha = 0.35f),
+            )
+            .padding(3.dp)
+            .semantics { contentDescription = design.name; role = Role.Button }
+            .tapOrHold(onClick)
+    ) {
+        SkinBackground(sk, Modifier.fillMaxSize(), unit = 10.dp)
+        Canvas(Modifier.fillMaxSize()) {
+            val w = size.width
+            val h = size.height
+            val m = w * 0.1f
+            val g = w * 0.06f
+            val colW = (w - 2 * m - g) / 2f
+            val top = h * 0.2f
+            val sw = (w * 0.035f).coerceAtLeast(1f)
+
+            fun box(x: Float, y: Float, bw: Float, bh: Float, fill: Color) {
+                drawRect(fill, Offset(x, y), Size(bw, bh))
+                drawRect(sk.frame, Offset(x, y), Size(bw, bh), style = Stroke(sw))
+            }
+
+            drawRect(sk.chip ?: sk.ink, Offset(m, h * 0.07f), Size(w - 2 * m, h * 0.07f))
+            box(m, top, colW, h * 0.16f, sk.prioFill)
+            box(m, top + h * 0.16f + g, colW, h - top - h * 0.16f - g - m, sk.brainFill)
+            box(m + colW + g, top, colW, h - top - m, sk.timeFill)
+        }
+    }
 }
