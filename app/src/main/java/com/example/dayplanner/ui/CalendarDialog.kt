@@ -1,8 +1,11 @@
 package com.example.dayplanner.ui
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.focusable
+import androidx.compose.foundation.layout.requiredWidth
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Surface
 import androidx.compose.material3.rememberDatePickerState
@@ -19,6 +22,7 @@ import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
@@ -34,6 +38,7 @@ fun CalendarDialog(
     onPick: (LocalDate) -> Unit,
     onDismiss: () -> Unit,
 ) {
+    val skin = LocalSkin.current
     val state = rememberDatePickerState(
         initialSelectedDateMillis = initial.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
     )
@@ -47,10 +52,17 @@ fun CalendarDialog(
     }
     LaunchedEffect(Unit) { focusRequester.requestFocus() }
 
-    Dialog(onDismissRequest = onDismiss) {
+    // Feste Breite wie beim Material-Dialog, sonst wird die Wochenleiste (Sonntag) gequetscht.
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false),
+    ) {
         Surface(
             shape = RoundedCornerShape(16.dp),
+            color = skin.bg,
+            border = BorderStroke(skin.frameWidth, skin.frame),
             modifier = Modifier
+                .requiredWidth(360.dp)
                 .onPreviewKeyEvent { e ->
                     if (e.type == KeyEventType.KeyDown &&
                         (e.key == Key.Enter || e.key == Key.NumPadEnter)
@@ -64,7 +76,29 @@ fun CalendarDialog(
                 .focusRequester(focusRequester)
                 .focusable(),
         ) {
-            DatePicker(state = state, title = null, headline = null, showModeToggle = false)
+            DatePicker(
+                state = state,
+                title = null,
+                headline = null,
+                showModeToggle = false,
+                colors = DatePickerDefaults.colors(
+                    containerColor = skin.bg,
+                    titleContentColor = skin.ink,
+                    headlineContentColor = skin.ink,
+                    weekdayContentColor = skin.ink,
+                    subheadContentColor = skin.ink,
+                    navigationContentColor = skin.ink,
+                    yearContentColor = skin.ink,
+                    currentYearContentColor = skin.ink,
+                    selectedYearContentColor = skin.bg,
+                    selectedYearContainerColor = skin.accent,
+                    dayContentColor = skin.ink,
+                    selectedDayContentColor = skin.bg,
+                    selectedDayContainerColor = skin.accent,
+                    todayContentColor = skin.ink,
+                    todayDateBorderColor = skin.ink,
+                ),
+            )
         }
     }
 }
