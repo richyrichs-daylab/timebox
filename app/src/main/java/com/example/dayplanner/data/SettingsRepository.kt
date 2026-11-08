@@ -1,79 +1,123 @@
 package com.example.dayplanner.data
 
 import android.content.Context
-import androidx.datastore.preferences.core.MutablePreferences
+import android.util.Base64
 import androidx.datastore.preferences.core.Preferences
-import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.withContext
 import org.json.JSONObject
+import java.security.MessageDigest
+import java.security.SecureRandom
+import javax.crypto.SecretKeyFactory
+import javax.crypto.spec.PBEKeySpec
 
 private val Context.settingsStore by preferencesDataStore(name = "settings")
+
+fun Settings.toJson(): JSONObject = JSONObject()
+    .put("showLeftArrow", showLeftArrow)
+    .put("showLock", showLock)
+    .put("dateFormat", dateFormat)
+    .put("rows", rows)
+    .put("columns", columns)
+    .put("dayStart", dayStart)
+    .put("priorities", priorities)
+    .put("priorityHistory", JSONObject(priorityHistory as Map<*, *>))
+    .put("showPrioritiesTitle", showPrioritiesTitle)
+    .put("showBraindumpTitle", showBraindumpTitle)
+    .put("showTimeboxTitle", showTimeboxTitle)
+    .put("wrapText", wrapText)
+    .put("locked", locked)
+    .put("design", design)
+    .put("themeMode", themeMode)
+    .put("zoom", zoom)
+    .put("drawing", drawing)
+
+fun settingsFromJson(o: JSONObject): Settings {
+    val d = Settings()
+    val history = o.optJSONObject("priorityHistory")?.let { h ->
+        h.keys().asSequence().associateWith { h.optInt(it, d.priorities) }
+    } ?: emptyMap()
+    return Settings(
+        showLeftArrow = o.optBoolean("showLeftArrow", d.showLeftArrow),
+        showLock = o.optBoolean("showLock", d.showLock),
+        dateFormat = o.optInt("dateFormat", d.dateFormat),
+        rows = o.optInt("rows", d.rows),
+        columns = o.optInt("columns", d.columns),
+        dayStart = o.optInt("dayStart", d.dayStart),
+        priorities = o.optInt("priorities", d.priorities),
+        priorityHistory = history,
+        showPrioritiesTitle = o.optBoolean("showPrioritiesTitle", d.showPrioritiesTitle),
+        showBraindumpTitle = o.optBoolean("showBraindumpTitle", d.showBraindumpTitle),
+        showTimeboxTitle = o.optBoolean("showTimeboxTitle", d.showTimeboxTitle),
+        wrapText = o.optBoolean("wrapText", d.wrapText),
+        locked = o.optBoolean("locked", d.locked),
+        design = o.optInt("design", d.design),
+        themeMode = o.optInt("themeMode", d.themeMode),
+        zoom = o.optBoolean("zoom", d.zoom),
+        drawing = o.optBoolean("drawing", d.drawing),
+    ).sanitized()
+}
 
 class SettingsRepository(context: Context) {
     private val store = context.applicationContext.settingsStore
 
-    private object K {
-        val leftArrow = booleanPreferencesKey("left_arrow")
-        val dateFormat = intPreferencesKey("date_format")
-        val rows = intPreferencesKey("rows")
-        val columns = intPreferencesKey("columns")
-        val dayStart = intPreferencesKey("day_start")
-        val priorities = intPreferencesKey("priorities")
-        val priorityHistory = stringPreferencesKey("priority_history")
-        val titlePriorities = booleanPreferencesKey("title_priorities")
-        val titleBraindump = booleanPreferencesKey("title_braindump")
-        val titleTimebox = booleanPreferencesKey("title_timebox")
-        val wrap = booleanPreferencesKey("wrap")
-        val locked = booleanPreferencesKey("locked")
-    }
+    private val kSettings = stringPreferencesKey("settings_json")
+    private val kPwType = intPreferencesKey("pw_type")
+    private val kPwSalt = stringPreferencesKey("pw_salt")
+    private val kPwHash = stringPreferencesKey("pw_hash")
+
+    private fun Preferences.toSettings(): Settings =
+        this[kSettings]?.let { runCatching { settingsFromJson(JSONObject(it)) }.getOrNull() }
+            ?: Settings()
 
     val flow: Flow<Settings> = store.data.map { it.toSettings() }
 
+    val passwordFlow: Flow<PasswordInfo> = store.data.map { p ->
+        PasswordInfo(p[kPwType] ?: PasswordInfo.NONE, p[kPwSalt] ?: "", p[kPwHash] ?: "")
+    }
+
+    suspend fun current(): Settings = flow.first()
+
     suspend fun update(transform: (Settings) -> Settings) {
-        store.edit { p -> p.write(transform(p.toSettings()).sanitized()) }
+        store.edit { p -> p[kSettings] = transform(p.toSettings()).sanitized().toJson().toString() }
     }
 
-    private fun Preferences.toSettings(): Settings {
-        val d = Settings()
-        return Settings(
-            showLeftArrow = this[K.leftArrow] ?: d.showLeftArrow,
-            dateFormat = this[K.dateFormat] ?: d.dateFormat,
-            rows = this[K.rows] ?: d.rows,
-            columns = this[K.columns] ?: d.columns,
-            dayStart = this[K.dayStart] ?: d.dayStart,
-            priorities = this[K.priorities] ?: d.priorities,
-            priorityHistory = this[K.priorityHistory]?.let(::historyFromJson) ?: emptyMap(),
-            showPrioritiesTitle = this[K.titlePriorities] ?: d.showPrioritiesTitle,
-            showBraindumpTitle = this[K.titleBraindump] ?: d.showBraindumpTitle,
-            showTimeboxTitle = this[K.titleTimebox] ?: d.showTimeboxTitle,
-            wrapText = this[K.wrap] ?: d.wrapText,
-            locked = this[K.locked] ?: d.locked,
-        ).sanitized()
+    // ---------- Passwort (nur Hash, kein Klartext) ----------
+
+    suspend fun setPassword(type: Int, secret: String) {
+        val salt = ByteArray(16).also { SecureRandom().nextBytes(it) }
+        val hash = withContext(Dispatchers.Default) { pbkdf2(secret, salt) }
+        store.edit { p ->
+            p[kPwType] = type
+            p[kPwSalt] = Base64.encodeToString(salt, Base64.NO_WRAP)
+            p[kPwHash] = Base64.encodeToString(hash, Base64.NO_WRAP)
+        }
     }
 
-    private fun MutablePreferences.write(s: Settings) {
-        this[K.leftArrow] = s.showLeftArrow
-        this[K.dateFormat] = s.dateFormat
-        this[K.rows] = s.rows
-        this[K.columns] = s.columns
-        this[K.dayStart] = s.dayStart
-        this[K.priorities] = s.priorities
-        this[K.priorityHistory] = JSONObject(s.priorityHistory as Map<*, *>).toString()
-        this[K.titlePriorities] = s.showPrioritiesTitle
-        this[K.titleBraindump] = s.showBraindumpTitle
-        this[K.titleTimebox] = s.showTimeboxTitle
-        this[K.wrap] = s.wrapText
-        this[K.locked] = s.locked
+    suspend fun clearPassword() {
+        store.edit { p ->
+            p.remove(kPwType)
+            p.remove(kPwSalt)
+            p.remove(kPwHash)
+        }
     }
 
-    private fun historyFromJson(json: String): Map<String, Int> =
-        runCatching {
-            val o = JSONObject(json)
-            o.keys().asSequence().associateWith { o.getInt(it) }
-        }.getOrDefault(emptyMap())
+    suspend fun check(info: PasswordInfo, input: String): Boolean = withContext(Dispatchers.Default) {
+        if (info.type == PasswordInfo.NONE) return@withContext true
+        val salt = Base64.decode(info.salt, Base64.NO_WRAP)
+        val expected = Base64.decode(info.hash, Base64.NO_WRAP)
+        MessageDigest.isEqual(expected, pbkdf2(input, salt))
+    }
+
+    private fun pbkdf2(secret: String, salt: ByteArray): ByteArray {
+        val spec = PBEKeySpec(secret.toCharArray(), salt, 60_000, 256)
+        return SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256").generateSecret(spec).encoded
+    }
 }
