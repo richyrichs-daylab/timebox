@@ -81,10 +81,12 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.dayplanner.R
@@ -96,6 +98,27 @@ fun Modifier.tapOrHold(onAction: () -> Unit): Modifier = composed {
     val current by rememberUpdatedState(onAction)
     pointerInput(Unit) {
         detectTapGestures(onTap = { current() }, onLongPress = { current() })
+    }
+}
+
+/**
+ * Wie tapOrHold, zusätzlich mit Doppelklick. Nur wenn onDouble gesetzt ist, wartet Android
+ * nach dem ersten Tippen kurz auf einen zweiten.
+ */
+fun Modifier.tapHoldDouble(onDouble: (() -> Unit)?, onAction: () -> Unit): Modifier = composed {
+    val current by rememberUpdatedState(onAction)
+    val dbl by rememberUpdatedState(onDouble)
+    val hasDouble = onDouble != null
+    pointerInput(hasDouble) {
+        if (hasDouble) {
+            detectTapGestures(
+                onDoubleTap = { dbl?.invoke() },
+                onTap = { current() },
+                onLongPress = { current() },
+            )
+        } else {
+            detectTapGestures(onTap = { current() }, onLongPress = { current() })
+        }
     }
 }
 
@@ -145,13 +168,15 @@ fun WideButton(
     text: String,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
+    minHeight: Dp = 46.dp,
+    fontSize: TextUnit = 15.sp,
     onClick: () -> Unit,
 ) {
     val skin = LocalSkin.current
     Box(
         modifier
             .alpha(if (enabled) 1f else 0.4f)
-            .heightIn(min = 46.dp)
+            .heightIn(min = minHeight)
             .then(if (enabled) Modifier.tapOrHold(onClick) else Modifier)
             .skinFrame(skin, skin.hourFill),
         contentAlignment = Alignment.Center,
@@ -160,7 +185,7 @@ fun WideButton(
             text = text,
             color = skin.hourInk,
             fontWeight = FontWeight.Bold,
-            fontSize = 15.sp,
+            fontSize = fontSize,
             textAlign = TextAlign.Center,
         )
     }
@@ -192,14 +217,23 @@ fun EditableCell(
     ink: Color,
     onCommit: (String) -> Unit,
     modifier: Modifier = Modifier,
+    struck: Boolean = false,
+    onDoubleTap: (() -> Unit)? = null,
 ) {
-    val style = LocalTextStyle.current.copy(fontSize = 15.sp, color = ink)
+    val style = LocalTextStyle.current.copy(
+        fontSize = 15.sp,
+        color = ink,
+        textDecoration = if (struck) TextDecoration.LineThrough else null,
+    )
     var editing by remember { mutableStateOf(false) }
     var overflow by remember { mutableStateOf(false) }
 
     Box(
         modifier
-            .then(if (editing) Modifier else Modifier.tapOrHold { editing = true })
+            .then(
+                if (editing) Modifier
+                else Modifier.tapHoldDouble(if (locked) null else onDoubleTap) { editing = true }
+            )
             .padding(horizontal = 6.dp, vertical = if (wrap) 4.dp else 0.dp),
         contentAlignment = Alignment.CenterStart,
     ) {
