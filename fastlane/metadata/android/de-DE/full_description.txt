@@ -1,0 +1,5 @@
+Timebox ist ein minimalistischer Tagesplaner. Jeder Tag besteht aus drei Teilen: deinen wichtigsten Prioritäten, einer Stunden-Timebox und einem freien Braindump, auf dem du auch zeichnen kannst.
+
+Alles bleibt auf deinem Gerät. Es gibt kein Konto, kein Tracking und keinen Internetzugriff.
+
+Funktionen: sechs Layout-Designs, Widgets für den Startbildschirm, tägliche Benachrichtigungen, Zeit- und Tagesschloss, PDF- und PNG-Export, automatische Backups, optionales Passwort, Kalender-Import und -Export und sieben Sprachen.
