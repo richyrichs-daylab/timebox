@@ -39,6 +39,8 @@ data class Settings(
     val autoBackupN: Int = 1,
     val autoBackupUnit: Int = 0,          // 0 täglich, 1 wöchentlich, 2 monatlich, 3 jährlich
     val lastBackup: String = "",          // ISO-Datum
+    val dailyBraindump: String = "",      // Vorlage "tägliche Fragen"
+    val dailyFilledUntil: String = "",    // ISO-Datum, bis wohin die Vorlage eingetragen ist
 ) {
     /** Lock-in-Modus: manuell (Schloss-Symbol) oder durch eine laufende Zeit-/Tagessperre. */
     fun lockActiveAt(now: Long): Boolean = (locked && showLock) || lockUntil > now
