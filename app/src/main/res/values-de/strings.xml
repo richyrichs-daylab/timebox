@@ -43,6 +43,7 @@
     <string name="lock_hours">Stunden</string>
     <string name="lock_minutes">Minuten</string>
 
+    <string name="set_daily">tägliche Fragen</string>
     <string name="export_pdf">als PDF exportieren</string>
     <string name="export_png">als PNG exportieren</string>
     <string name="export_ok">In Downloads gespeichert</string>
@@ -73,6 +74,16 @@
     <string name="pw_confirm">Bestätigung</string>
     <string name="pw_hint_min">Mindestens 4 Zeichen</string>
     <string name="pw_wrong">Falsches Passwort</string>
+
+    <string name="cal_from">+ vom Kalender</string>
+    <string name="cal_to">+ zu Kalender</string>
+    <string name="cal_none">Keine Termine an diesem Tag</string>
+    <string name="cal_empty">Zuerst Text eingeben</string>
+    <string name="cal_denied">Kalenderzugriff verweigert</string>
+    <string name="cal_no_app">Keine Kalender-App gefunden</string>
+
+    <string name="btn_donate">❤️ Entwickler unterstützen 👍</string>
+    <string name="btn_designs">+ mehr individuelle Designs +</string>
 
     <string name="cd_prev">Voriger Tag</string>
     <string name="cd_next">Nächster Tag</string>
