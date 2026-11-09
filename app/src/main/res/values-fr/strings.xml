@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Timebox</string>
+
+    <string name="priorities">Priorités</string>
+    <string name="braindump">Brain dump</string>
+    <string name="timebox">Timebox</string>
+
+    <string name="settings">Réglages</string>
+    <string name="set_left_arrow">Flèche gauche</string>
+    <string name="set_lock">Symbole de cadenas</string>
+    <string name="set_share">Symbole de partage</string>
+    <string name="set_date_format">Format de date : %1$s</string>
+    <string name="set_rows">Lignes</string>
+    <string name="set_columns">Colonnes</string>
+    <string name="set_day_start">Début de journée</string>
+    <string name="set_mode">Mode : %1$s</string>
+    <string name="set_gray_past">Griser les heures passées</string>
+    <string name="set_priorities_count">Priorités</string>
+    <string name="set_title_priorities">Titre : Priorités</string>
+    <string name="set_title_braindump">Titre : Brain dump</string>
+    <string name="set_title_timebox">Titre : Timebox</string>
+    <string name="set_wrap">Retour à la ligne</string>
+    <string name="set_zoom">Zoom</string>
+    <string name="set_drawing">Mode dessin</string>
+    <string name="set_highlight_now">Surligner l’heure actuelle</string>
+    <string name="set_strike">Barrer par double appui</string>
+
+    <string name="mode_system">Par défaut</string>
+    <string name="mode_light">Clair</string>
+    <string name="mode_dark">Sombre</string>
+
+    <string name="section_notifications">Notifications</string>
+    <string name="notif_plan">Planning par heure</string>
+    <string name="notif_prios">Priorités du jour</string>
+    <string name="notif_both">Priorités + planning</string>
+    <string name="notif_channel">Aperçu quotidien</string>
+
+    <string name="lock_time">Verrou horaire</string>
+    <string name="lock_day">Verrou par jours</string>
+    <string name="set_allow_release">Autoriser le déverrouillage</string>
+    <string name="lock_until">Verrouillé jusqu’à %1$s</string>
+    <string name="lock_hours">Heures</string>
+    <string name="lock_minutes">Minutes</string>
+
+    <string name="set_daily">Questions quotidiennes</string>
+    <string name="export_pdf">Exporter en PDF</string>
+    <string name="export_png">Exporter en PNG</string>
+    <string name="export_ok">Enregistré dans Téléchargements</string>
+    <string name="backup_export">Exporter la sauvegarde</string>
+    <string name="backup_import">Importer une sauvegarde</string>
+    <string name="backup_auto">Automatiser la sauvegarde</string>
+    <string name="backup_export_ok">Sauvegarde exportée</string>
+    <string name="backup_import_ok">Sauvegarde importée</string>
+    <string name="backup_auto_on">Sauvegarde automatique activée</string>
+    <string name="backup_auto_off">Sauvegarde automatique désactivée</string>
+    <string name="backup_failed">Une erreur s’est produite</string>
+
+    <string name="unit_daily">Quotidienne</string>
+    <string name="unit_weekly">Hebdomadaire</string>
+    <string name="unit_monthly">Mensuelle</string>
+    <string name="unit_yearly">Annuelle</string>
+
+    <string name="dlg_cancel">Annuler</string>
+    <string name="dlg_start">Démarrer</string>
+    <string name="dlg_export">Exporter</string>
+    <string name="dlg_confirm">Confirmer</string>
+    <string name="dlg_disable">Désactiver</string>
+
+    <string name="pw_numeric">Créer un code numérique</string>
+    <string name="pw_text">Créer un mot de passe</string>
+    <string name="pw_delete">Supprimer le mot de passe</string>
+    <string name="pw_cancel">Annuler</string>
+    <string name="pw_confirm">Confirmer</string>
+    <string name="pw_hint_min">Au moins 4 caractères</string>
+    <string name="pw_wrong">Mot de passe incorrect</string>
+
+    <string name="cal_from">+ depuis l’agenda</string>
+    <string name="cal_to">+ vers l’agenda</string>
+    <string name="cal_none">Aucun événement ce jour</string>
+    <string name="cal_empty">Saisissez d’abord un texte</string>
+    <string name="cal_denied">Accès à l’agenda refusé</string>
+    <string name="cal_no_app">Aucune application d’agenda trouvée</string>
+
+    <string name="btn_donate">❤️ Soutenir le développeur 👍</string>
+    <string name="btn_designs">+ plus de designs personnalisés +</string>
+
+    <string name="cd_prev">Jour précédent</string>
+    <string name="cd_next">Jour suivant</string>
+    <string name="cd_settings">Réglages</string>
+    <string name="cd_lock">Mode verrouillage</string>
+    <string name="cd_share">Partager</string>
+    <string name="cd_reset">Déverrouiller</string>
+    <string name="cd_date">Choisir la date</string>
+    <string name="cd_back">Retour</string>
+    <string name="cd_pen">Stylo</string>
+    <string name="cd_eraser">Gomme</string>
+    <string name="cd_undo">Annuler</string>
+
+    <string name="widget_prios">Priorités</string>
+    <string name="widget_braindump">Brain dump</string>
+    <string name="widget_timebox">Timebox</string>
+    <string name="widget_page">Page</string>
+    <string name="widget_page_nogear">Page sans engrenage</string>
+</resources>
