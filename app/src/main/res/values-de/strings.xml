@@ -49,4 +49,10 @@
     <string name="cd_pen">Stift</string>
     <string name="cd_eraser">Radierer</string>
     <string name="cd_undo">Rückgängig</string>
+
+    <string name="widget_prios">Prioritäten</string>
+    <string name="widget_braindump">Braindump</string>
+    <string name="widget_timebox">Timebox</string>
+    <string name="widget_page">Seite</string>
+    <string name="widget_page_nogear">Seite ohne Zahnrad</string>
 </resources>
