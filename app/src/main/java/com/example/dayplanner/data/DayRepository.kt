@@ -88,6 +88,28 @@ class DayRepository(context: Context) {
         }
     }
 
+    /**
+     * Trägt [new] als Braindump in [days] aufeinanderfolgende Tage ab [from] ein, aber nur dort,
+     * wo das Braindump leer ist oder noch dem alten Vorlagentext [old] entspricht.
+     */
+    suspend fun applyBraindump(from: LocalDate, days: Int, old: String, new: String) = mutex.withLock {
+        withContext(Dispatchers.IO) {
+            for (i in 0 until days) {
+                val date = from.plusDays(i.toLong())
+                val f = file(date)
+                val data = if (f.exists()) {
+                    runCatching { dayFromJson(JSONObject(f.readText())) }.getOrDefault(DayData())
+                } else {
+                    DayData()
+                }
+                if ((data.braindump.isEmpty() || data.braindump == old) && data.braindump != new) {
+                    val updated = data.copy(braindump = new)
+                    if (updated == DayData()) f.delete() else f.writeText(dayToJson(updated).toString())
+                }
+            }
+        }
+    }
+
     /** Alle Tage als JSON-Objekt (Datum -> Tag) für das Backup. */
     suspend fun exportAll(): JSONObject = mutex.withLock {
         withContext(Dispatchers.IO) {
