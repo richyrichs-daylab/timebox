@@ -1,9 +1,16 @@
 package com.example.dayplanner.ui
 
+import android.Manifest
+import android.content.ActivityNotFoundException
 import android.content.ClipData
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.calculatePan
@@ -13,7 +20,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -21,6 +28,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
@@ -28,7 +36,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.background
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -51,7 +58,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChanged
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -60,18 +69,24 @@ import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import com.example.dayplanner.R
 import com.example.dayplanner.data.DayState
 import com.example.dayplanner.data.Settings
 import kotlinx.coroutines.delay
+import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 
 private val TitleHeight = 32.dp
+private val MinRow = 22.dp
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun MainScreen(vm: PlannerViewModel, onOpenSettings: () -> Unit) {
     val settings by vm.settings.collectAsState()
@@ -84,7 +99,72 @@ fun MainScreen(vm: PlannerViewModel, onOpenSettings: () -> Unit) {
     val context = LocalContext.current
     val lockActive = rememberLockActive(s)
     var showCalendar by remember { mutableStateOf(false) }
+    var showEvents by remember { mutableStateOf(false) }
+    var activeEdit by remember { mutableStateOf<EditHandle?>(null) }
+    val imeVisible = WindowInsets.isImeVisible
     val gap = 8.dp // äußerer Rahmen = Abstand zwischen den Elementen
+
+    fun toast(res: Int) = Toast.makeText(context, context.getString(res), Toast.LENGTH_SHORT).show()
+
+    val onActive: (EditHandle, Boolean) -> Unit = { handle, on ->
+        if (on) {
+            activeEdit = handle
+        } else if (activeEdit === handle) {
+            activeEdit = null
+        }
+    }
+
+    val calendarPermission = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) showEvents = true else toast(R.string.cal_denied)
+    }
+
+    fun fromCalendar() {
+        val granted = ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CALENDAR) ==
+            PackageManager.PERMISSION_GRANTED
+        if (granted) showEvents = true else calendarPermission.launch(Manifest.permission.READ_CALENDAR)
+    }
+
+    /** Ein Termin dauert 1 Stunde (eine Spalte) bzw. 30 Minuten (zwei Spalten, Spalte 2 ab :30). */
+    fun toCalendar() {
+        val handle = activeEdit ?: return
+        if (handle.kind != 1) return
+        val text = handle.read().trim()
+        if (text.isEmpty()) {
+            toast(R.string.cal_empty)
+            return
+        }
+        val hour = handle.key / 2
+        val column = if (s.columns == 2 && handle.key % 2 == 1) 1 else 0
+        val offsetHours = (hour - s.dayStart + 24) % 24
+        val begin = d.date.atTime(s.dayStart, 0)
+            .plusHours(offsetHours.toLong())
+            .plusMinutes(column * 30L)
+            .atZone(ZoneId.systemDefault())
+            .toInstant()
+            .toEpochMilli()
+        val end = begin + (if (s.columns == 2) 30 else 60) * 60_000L
+        try {
+            context.startActivity(CalendarSync.insertIntent(text, begin, end))
+        } catch (e: ActivityNotFoundException) {
+            toast(R.string.cal_no_app)
+        }
+    }
+
+    /** Der Titel kommt in die Zelle der Startzeit des Termins. */
+    fun insertEvent(ev: CalEvent) {
+        val start = Instant.ofEpochMilli(ev.begin).atZone(ZoneId.systemDefault())
+        val column = if (s.columns == 2 && start.minute >= 30) 1 else 0
+        val key = start.hour * 2 + column
+        val handle = activeEdit
+        if (handle != null && handle.kind == 1 && handle.key == key) {
+            val current = handle.read()
+            handle.write(if (current.isBlank()) ev.title else "$current · ${ev.title}")
+        } else {
+            vm.appendTimebox(d.date, key, ev.title)
+        }
+    }
 
     Box(Modifier.fillMaxSize()) {
         SkinBackground(skin, Modifier.fillMaxSize())
@@ -99,24 +179,39 @@ fun MainScreen(vm: PlannerViewModel, onOpenSettings: () -> Unit) {
                     )
                 }
                 .windowInsetsPadding(WindowInsets.safeDrawing)
-                .padding(gap),
-            verticalArrangement = Arrangement.spacedBy(gap),
         ) {
-            Header(
-                dateText = formatDate(d.date, s.dateFormat),
-                s = s,
-                lockActive = lockActive,
-                onPrev = { focus.clearFocus(); vm.shiftDay(-1) },
-                onNext = { focus.clearFocus(); vm.shiftDay(1) },
-                onSettings = onOpenSettings,
-                onToggleLock = { vm.toggleLock() },
-                onShare = {
-                    focus.clearFocus()
-                    vm.prepareShare { uri -> if (uri != null) shareImage(context, uri) }
-                },
-                onDate = { showCalendar = true },
-            )
-            Content(s, d, vm, gap, lockActive, Modifier.weight(1f).fillMaxWidth())
+            Column(
+                Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+                    .padding(gap),
+                verticalArrangement = Arrangement.spacedBy(gap),
+            ) {
+                Header(
+                    dateText = formatDate(d.date, s.dateFormat),
+                    s = s,
+                    lockActive = lockActive,
+                    onPrev = { focus.clearFocus(); vm.shiftDay(-1) },
+                    onNext = { focus.clearFocus(); vm.shiftDay(1) },
+                    onSettings = onOpenSettings,
+                    onToggleLock = { vm.toggleLock() },
+                    onShare = {
+                        focus.clearFocus()
+                        vm.prepareShare { uri -> if (uri != null) shareImage(context, uri) }
+                    },
+                    onDate = { showCalendar = true },
+                )
+                Content(s, d, vm, gap, lockActive, onActive, Modifier.weight(1f).fillMaxWidth())
+            }
+
+            // Direkt über der Tastatur
+            if (imeVisible && activeEdit != null && !lockActive) {
+                CalendarBar(
+                    toEnabled = activeEdit?.kind == 1,
+                    onFrom = { fromCalendar() },
+                    onTo = { toCalendar() },
+                )
+            }
         }
     }
 
@@ -125,6 +220,17 @@ fun MainScreen(vm: PlannerViewModel, onOpenSettings: () -> Unit) {
             initial = d.date,
             onPick = { focus.clearFocus(); vm.selectDate(it) },
             onDismiss = { showCalendar = false },
+        )
+    }
+
+    if (showEvents) {
+        EventPickerDialog(
+            date = d.date,
+            onDismiss = { showEvents = false },
+            onPick = { ev ->
+                showEvents = false
+                insertEvent(ev)
+            },
         )
     }
 }
@@ -176,12 +282,15 @@ private fun Content(
     vm: PlannerViewModel,
     gap: Dp,
     lockActive: Boolean,
+    onActive: (EditHandle, Boolean) -> Unit,
     modifier: Modifier,
 ) {
     val skin = LocalSkin.current
+    val density = LocalDensity.current
     var scale by remember { mutableFloatStateOf(1f) }
     var offset by remember { mutableStateOf(Offset.Zero) }
     val now = rememberMinuteClock(s.grayPast || s.highlightNow)
+    val scroll = rememberScrollState()
     LaunchedEffect(s.zoom) {
         if (!s.zoom) {
             scale = 1f
@@ -220,14 +329,26 @@ private fun Content(
     }
 
     BoxWithConstraints(modifier.clipToBounds().then(zoomModifier)) {
-        val avail = maxHeight
+        val availPx = constraints.maxHeight
         val rows = s.rows
         val titleBlock = if (s.showTimeboxTitle) TitleHeight + gap else 0.dp
-        // Mindesthöhe einer Zeile: ohne Textumbruch füllt die Timebox genau die Höhe.
-        val rowMin = ((avail - titleBlock - skin.frameWidth * 2 - skin.lineWidth * (rows - 1)) / rows)
-            .coerceAtLeast(22.dp)
 
-        Column(
+        // Die Seite hat immer genau die verfügbare Höhe. Nur wenn der Platz (z. B. bei offener
+        // Tastatur) für die Mindesthöhe der Zeilen nicht reicht, darf sie scrollen.
+        val requiredDp = titleBlock + skin.frameWidth * 2 + MinRow * rows + skin.lineWidth * (rows - 1)
+        val requiredPx = with(density) { requiredDp.roundToPx() }
+        val contentPx = maxOf(availPx, requiredPx)
+        val scrollable = contentPx > availPx
+        val contentDp = with(density) { contentPx.toDp() }
+
+        val rowEstimate = (contentDp - titleBlock - skin.frameWidth * 2 - skin.lineWidth * (rows - 1)) / rows
+        val hourFont = (rowEstimate.value * 0.55f).coerceIn(9f, 17f).sp
+
+        val leftTitles = (if (s.showPrioritiesTitle) TitleHeight else 0.dp) +
+            (if (s.showBraindumpTitle) TitleHeight else 0.dp)
+        val prioMax = ((contentDp - leftTitles - gap * 3) * 0.55f).coerceAtLeast(44.dp)
+
+        Box(
             Modifier
                 .fillMaxSize()
                 .graphicsLayer {
@@ -236,14 +357,16 @@ private fun Content(
                     translationX = offset.x
                     translationY = offset.y
                 }
-                .verticalScroll(rememberScrollState())
+                .then(if (scrollable) Modifier.verticalScroll(scroll) else Modifier)
         ) {
             key(d.date) {
                 Row(
                     Modifier
                         .fillMaxWidth()
-                        .heightIn(min = avail)
-                        .height(IntrinsicSize.Min),
+                        .layout { measurable, c ->
+                            val placeable = measurable.measure(Constraints.fixed(c.maxWidth, contentPx))
+                            layout(c.maxWidth, contentPx) { placeable.placeRelative(0, 0) }
+                        },
                     horizontalArrangement = Arrangement.spacedBy(gap),
                 ) {
                     // Linke Spalte: Prioritäten + Braindump
@@ -254,7 +377,7 @@ private fun Content(
                         verticalArrangement = Arrangement.spacedBy(gap),
                     ) {
                         if (s.showPrioritiesTitle) SectionTitle(stringResource(R.string.priorities))
-                        PrioritiesBox(s.prioritiesFor(d.date), d, s, lockActive, vm)
+                        PrioritiesBox(s.prioritiesFor(d.date), d, s, lockActive, vm, prioMax, onActive)
                         if (s.showBraindumpTitle) SectionTitle(stringResource(R.string.braindump))
                         BlockField(
                             text = d.data.braindump,
@@ -267,18 +390,31 @@ private fun Content(
                             modifier = Modifier
                                 .weight(1f)
                                 .fillMaxWidth()
-                                .then(NoIntrinsicHeight)
                                 .skinFrame(skin, skin.brainFill, skin.frameBrain),
+                            onActive = onActive,
                         )
                     }
 
                     // Rechte Spalte: Timebox
                     Column(
-                        Modifier.weight(1.15f),
+                        Modifier
+                            .weight(1.15f)
+                            .fillMaxHeight(),
                         verticalArrangement = Arrangement.spacedBy(gap),
                     ) {
                         if (s.showTimeboxTitle) SectionTitle(stringResource(R.string.timebox))
-                        Timebox(s, d, vm, rowMin, lockActive, now)
+                        Timebox(
+                            s = s,
+                            day = d,
+                            vm = vm,
+                            lockActive = lockActive,
+                            now = now,
+                            hourFont = hourFont,
+                            onActive = onActive,
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxWidth(),
+                        )
                     }
                 }
             }
@@ -414,26 +550,37 @@ private fun PrioritiesBox(
     s: Settings,
     lockActive: Boolean,
     vm: PlannerViewModel,
+    maxHeight: Dp,
+    onActive: (EditHandle, Boolean) -> Unit,
 ) {
     val skin = LocalSkin.current
-    Column(
+    Box(
         Modifier
             .fillMaxWidth()
+            .heightIn(max = maxHeight)
             .skinFrame(skin, skin.prioFill)
     ) {
-        repeat(count) { i ->
-            if (i > 0) HLine(skin.line, skin.lineWidth)
+        StableRows(
+            rowCount = count,
+            lineColor = { skin.line },
+            lineWidth = skin.lineWidth,
+            minRow = 44.dp,
+            useNeeds = s.wrapText,
+            fillHeight = false,
+            modifier = Modifier.fillMaxWidth(),
+        ) { i ->
             EditableCell(
                 text = day.data.priorities[i].orEmpty(),
                 locked = lockActive,
                 wrap = s.wrapText,
                 ink = skin.fieldInk,
                 onCommit = { vm.setPriority(day.date, i, it) },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(min = 44.dp),
+                modifier = Modifier.fillMaxSize(),
                 struck = i in day.data.strikeP,
                 onDoubleTap = if (s.strikeDouble) ({ vm.toggleStrikePriority(day.date, i) }) else null,
+                handleKind = 0,
+                handleKey = i,
+                onActive = onActive,
             )
         }
     }
@@ -446,77 +593,94 @@ private fun Timebox(
     s: Settings,
     day: DayState,
     vm: PlannerViewModel,
-    rowMin: Dp,
     lockActive: Boolean,
     now: Long,
+    hourFont: TextUnit,
+    onActive: (EditHandle, Boolean) -> Unit,
+    modifier: Modifier,
 ) {
     val skin = LocalSkin.current
-    val hourFont = (rowMin.value * 0.55f).coerceIn(9f, 17f).sp
+    Box(modifier.skinFrame(skin, Color.Transparent)) {
+        StableRows(
+            rowCount = s.rows,
+            lineColor = { i -> skin.lineAt(i.toFloat() / s.rows) },
+            lineWidth = skin.lineWidth,
+            minRow = 0.dp,
+            useNeeds = s.wrapText,
+            fillHeight = true,
+            modifier = Modifier.fillMaxSize(),
+        ) { i ->
+            TimeRow(i, s, day, vm, lockActive, now, hourFont, onActive)
+        }
+    }
+}
 
-    Column(
+@Composable
+private fun TimeRow(
+    i: Int,
+    s: Settings,
+    day: DayState,
+    vm: PlannerViewModel,
+    lockActive: Boolean,
+    now: Long,
+    hourFont: TextUnit,
+    onActive: (EditHandle, Boolean) -> Unit,
+) {
+    val skin = LocalSkin.current
+    val hour = (s.dayStart + i) % 24
+    val state = rowState(day.date, s.dayStart, i, now)
+    val gray = s.grayPast && state < 0
+    val highlight = s.highlightNow && state == 0
+
+    Row(
         Modifier
-            .fillMaxWidth()
-            .skinFrame(skin, Color.Transparent)
-    ) {
-        for (i in 0 until s.rows) {
-            val hour = (s.dayStart + i) % 24
-            if (i > 0) HLine(skin.lineAt(i.toFloat() / s.rows), skin.lineWidth)
-
-            val state = rowState(day.date, s.dayStart, i, now)
-            val gray = s.grayPast && state < 0
-            val highlight = s.highlightNow && state == 0
-
-            // Nur Zeilen mit mehrzeiligem Text werden höher, alle anderen behalten rowMin.
-            Row(
-                Modifier
-                    .fillMaxWidth()
-                    .heightIn(min = rowMin)
-                    .height(IntrinsicSize.Min)
-                    .then(if (gray) Modifier.alpha(0.4f) else Modifier)
-                    .then(
-                        if (highlight) {
-                            Modifier.drawWithContent {
-                                drawContent()
-                                drawRect(skin.accent.copy(alpha = 0.22f))
-                            }
-                        } else {
-                            Modifier
-                        }
-                    )
-            ) {
-                Box(
+            .fillMaxSize()
+            .then(if (gray) Modifier.alpha(0.4f) else Modifier)
+            .then(
+                if (highlight) {
+                    Modifier.drawWithContent {
+                        drawContent()
+                        drawRect(skin.accent.copy(alpha = 0.22f))
+                    }
+                } else {
                     Modifier
-                        .width(40.dp)
-                        .fillMaxHeight()
-                        .background(skin.hourFill),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(
-                        text = hour.toString(),
-                        color = skin.hourInk,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = hourFont,
-                        maxLines = 1,
-                    )
                 }
-                for (c in 0 until s.columns) {
-                    VLine(skin.lineAt(i.toFloat() / s.rows), skin.lineWidth)
-                    val cellKey = hour * 2 + c
-                    EditableCell(
-                        text = day.data.timebox[cellKey].orEmpty(),
-                        locked = lockActive,
-                        wrap = s.wrapText,
-                        ink = skin.timeInk,
-                        onCommit = { vm.setTimebox(day.date, cellKey, it) },
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxHeight()
-                            .background(skin.timeFill),
-                        struck = cellKey in day.data.strikeT,
-                        onDoubleTap = if (s.strikeDouble) ({ vm.toggleStrikeTimebox(day.date, cellKey) }) else null,
-                    )
-                }
-            }
+            )
+    ) {
+        Box(
+            Modifier
+                .width(40.dp)
+                .fillMaxHeight()
+                .background(skin.hourFill),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                text = hour.toString(),
+                color = skin.hourInk,
+                fontWeight = FontWeight.Bold,
+                fontSize = hourFont,
+                maxLines = 1,
+            )
+        }
+        for (c in 0 until s.columns) {
+            VLine(skin.lineAt(i.toFloat() / s.rows), skin.lineWidth)
+            val cellKey = hour * 2 + c
+            EditableCell(
+                text = day.data.timebox[cellKey].orEmpty(),
+                locked = lockActive,
+                wrap = s.wrapText,
+                ink = skin.timeInk,
+                onCommit = { vm.setTimebox(day.date, cellKey, it) },
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
+                    .background(skin.timeFill),
+                struck = cellKey in day.data.strikeT,
+                onDoubleTap = if (s.strikeDouble) ({ vm.toggleStrikeTimebox(day.date, cellKey) }) else null,
+                handleKind = 1,
+                handleKey = cellKey,
+                onActive = onActive,
+            )
         }
     }
 }
