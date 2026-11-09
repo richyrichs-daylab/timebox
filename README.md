@@ -11,9 +11,8 @@
 ---
 
 ## Harvards best time management practice
-[Write 2–3 short, exciting sentences describing what makes your wallpaper app special, how often you add new designs, and why users will love it.]
 
-## 🚀 Key Features
+## 👍 Key Features
 * **Control the day** — plan every hour of each day
 * **Lay out top priorities** for a productive day
 * **Braindump your way to clarity** and even draw detailed sketches
