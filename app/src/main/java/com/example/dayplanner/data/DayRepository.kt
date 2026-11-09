@@ -10,6 +10,9 @@ import org.json.JSONObject
 import java.io.File
 import java.time.LocalDate
 
+/** App und Widgets teilen sich diese Sperre, damit nie gleichzeitig gelesen und geschrieben wird. */
+private val sharedMutex = Mutex()
+
 private fun Map<Int, String>.toJsonObj(): JSONObject {
     val o = JSONObject()
     forEach { (k, v) -> o.put(k.toString(), v) }
@@ -59,7 +62,7 @@ internal fun dayFromJson(o: JSONObject): DayData {
 
 class DayRepository(context: Context) {
     private val dir = File(context.applicationContext.filesDir, "days").apply { mkdirs() }
-    private val mutex = Mutex()
+    private val mutex = sharedMutex
 
     private fun file(date: LocalDate) = File(dir, "$date.json")
 
