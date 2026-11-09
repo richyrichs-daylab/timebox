@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Timebox</string>
+
+    <string name="priorities">प्राथमिकताएँ</string>
+    <string name="braindump">ब्रेनडंप</string>
+    <string name="timebox">Timebox</string>
+
+    <string name="settings">सेटिंग्स</string>
+    <string name="set_left_arrow">बायाँ तीर</string>
+    <string name="set_lock">ताला चिह्न</string>
+    <string name="set_share">शेयर चिह्न</string>
+    <string name="set_date_format">तिथि प्रारूप: %1$s</string>
+    <string name="set_rows">पंक्तियाँ</string>
+    <string name="set_columns">स्तंभ</string>
+    <string name="set_day_start">दिन की शुरुआत</string>
+    <string name="set_mode">मोड: %1$s</string>
+    <string name="set_gray_past">बीते घंटे धुंधले करें</string>
+    <string name="set_priorities_count">प्राथमिकताएँ</string>
+    <string name="set_title_priorities">शीर्षक: प्राथमिकताएँ</string>
+    <string name="set_title_braindump">शीर्षक: ब्रेनडंप</string>
+    <string name="set_title_timebox">शीर्षक: Timebox</string>
+    <string name="set_wrap">टेक्स्ट रैप</string>
+    <string name="set_zoom">ज़ूम</string>
+    <string name="set_drawing">ड्रॉइंग मोड</string>
+    <string name="set_highlight_now">वर्तमान घंटा हाइलाइट करें</string>
+    <string name="set_strike">डबल टैप से काटें</string>
+
+    <string name="mode_system">डिफ़ॉल्ट</string>
+    <string name="mode_light">हल्का</string>
+    <string name="mode_dark">गहरा</string>
+
+    <string name="section_notifications">सूचनाएँ</string>
+    <string name="notif_plan">घंटे के अनुसार दिन की योजना</string>
+    <string name="notif_prios">दिन की प्राथमिकताएँ</string>
+    <string name="notif_both">प्राथमिकताएँ + दिन की योजना</string>
+    <string name="notif_channel">दैनिक सारांश</string>
+
+    <string name="lock_time">समय लॉक</string>
+    <string name="lock_day">दिन लॉक</string>
+    <string name="set_allow_release">अनलॉक की अनुमति दें</string>
+    <string name="lock_until">%1$s तक लॉक</string>
+    <string name="lock_hours">घंटे</string>
+    <string name="lock_minutes">मिनट</string>
+
+    <string name="set_daily">दैनिक प्रश्न</string>
+    <string name="export_pdf">PDF के रूप में निर्यात करें</string>
+    <string name="export_png">PNG के रूप में निर्यात करें</string>
+    <string name="export_ok">डाउनलोड में सहेजा गया</string>
+    <string name="backup_export">बैकअप निर्यात करें</string>
+    <string name="backup_import">बैकअप आयात करें</string>
+    <string name="backup_auto">बैकअप स्वचालित करें</string>
+    <string name="backup_export_ok">बैकअप निर्यात हुआ</string>
+    <string name="backup_import_ok">बैकअप आयात हुआ</string>
+    <string name="backup_auto_on">स्वचालित बैकअप चालू</string>
+    <string name="backup_auto_off">स्वचालित बैकअप बंद</string>
+    <string name="backup_failed">कुछ गड़बड़ हो गई</string>
+
+    <string name="unit_daily">प्रतिदिन</string>
+    <string name="unit_weekly">साप्ताहिक</string>
+    <string name="unit_monthly">मासिक</string>
+    <string name="unit_yearly">वार्षिक</string>
+
+    <string name="dlg_cancel">रद्द करें</string>
+    <string name="dlg_start">शुरू करें</string>
+    <string name="dlg_export">निर्यात करें</string>
+    <string name="dlg_confirm">पुष्टि करें</string>
+    <string name="dlg_disable">बंद करें</string>
+
+    <string name="pw_numeric">अंकों वाला पासवर्ड बनाएँ</string>
+    <string name="pw_text">अक्षरों वाला पासवर्ड बनाएँ</string>
+    <string name="pw_delete">पासवर्ड हटाएँ</string>
+    <string name="pw_cancel">रद्द करें</string>
+    <string name="pw_confirm">पुष्टि करें</string>
+    <string name="pw_hint_min">कम से कम 4 वर्ण</string>
+    <string name="pw_wrong">गलत पासवर्ड</string>
+
+    <string name="cal_from">+ कैलेंडर से</string>
+    <string name="cal_to">+ कैलेंडर में</string>
+    <string name="cal_none">इस दिन कोई कार्यक्रम नहीं</string>
+    <string name="cal_empty">पहले टेक्स्ट लिखें</string>
+    <string name="cal_denied">कैलेंडर की अनुमति नहीं मिली</string>
+    <string name="cal_no_app">कोई कैलेंडर ऐप नहीं मिला</string>
+
+    <string name="btn_donate">❤️ डेवलपर का समर्थन करें 👍</string>
+    <string name="btn_designs">+ और व्यक्तिगत डिज़ाइन +</string>
+
+    <string name="cd_prev">पिछला दिन</string>
+    <string name="cd_next">अगला दिन</string>
+    <string name="cd_settings">सेटिंग्स</string>
+    <string name="cd_lock">लॉक-इन मोड</string>
+    <string name="cd_share">शेयर करें</string>
+    <string name="cd_reset">अनलॉक करें</string>
+    <string name="cd_date">तिथि चुनें</string>
+    <string name="cd_back">वापस</string>
+    <string name="cd_pen">पेन</string>
+    <string name="cd_eraser">रबर</string>
+    <string name="cd_undo">पूर्ववत करें</string>
+
+    <string name="widget_prios">प्राथमिकताएँ</string>
+    <string name="widget_braindump">ब्रेनडंप</string>
+    <string name="widget_timebox">Timebox</string>
+    <string name="widget_page">पेज</string>
+    <string name="widget_page_nogear">गियर रहित पेज</string>
+</resources>
