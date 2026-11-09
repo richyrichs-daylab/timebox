@@ -13,6 +13,7 @@ import com.example.dayplanner.data.Settings
 import com.example.dayplanner.data.SettingsRepository
 import com.example.dayplanner.data.settingsFromJson
 import com.example.dayplanner.data.toJson
+import com.example.dayplanner.widget.WidgetUpdater
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -43,6 +44,14 @@ class PlannerViewModel(app: Application) : AndroidViewModel(app) {
 
     init {
         selectDate(currentDate)
+    }
+
+    // ---------- Widgets ----------
+
+    private suspend fun refreshWidgets() {
+        withContext(Dispatchers.Default) {
+            runCatching { WidgetUpdater.refreshAll(getApplication<Application>()) }
+        }
     }
 
     // ---------- Tagesnavigation ----------
@@ -78,10 +87,14 @@ class PlannerViewModel(app: Application) : AndroidViewModel(app) {
         if (cur != null && cur.date == date) {
             val updated = change(cur.data)
             _day.value = DayState(date, updated)
-            viewModelScope.launch { dayRepo.save(date, updated) }
+            viewModelScope.launch {
+                dayRepo.save(date, updated)
+                refreshWidgets()
+            }
         } else {
             viewModelScope.launch {
                 dayRepo.save(date, change(dayRepo.load(date)))
+                refreshWidgets()
             }
         }
     }
@@ -92,7 +105,10 @@ class PlannerViewModel(app: Application) : AndroidViewModel(app) {
     // ---------- Einstellungen ----------
 
     fun updateSettings(transform: (Settings) -> Settings) {
-        viewModelScope.launch { settingsRepo.update(transform) }
+        viewModelScope.launch {
+            settingsRepo.update(transform)
+            refreshWidgets()
+        }
     }
 
     fun toggleLock() = updateSettings { it.copy(locked = !it.locked) }
@@ -163,6 +179,7 @@ class PlannerViewModel(app: Application) : AndroidViewModel(app) {
                     settingsRepo.update { settingsFromJson(so) }
                 }
                 selectDate(currentDate)
+                refreshWidgets()
             }.isSuccess
             onResult(ok)
         }
