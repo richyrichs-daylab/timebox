@@ -1,5 +1,6 @@
 package com.example.dayplanner
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
@@ -11,8 +12,10 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -29,11 +32,23 @@ import com.example.dayplanner.ui.resolveSkin
 class MainActivity : ComponentActivity() {
     private val vm: PlannerViewModel by viewModels()
     private var wasStopped = false
+    private var settingsRequest by mutableIntStateOf(0)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        setContent { PlannerRoot(vm) }
+        if (savedInstanceState == null) handleIntent(intent)
+        setContent { PlannerRoot(vm, settingsRequest) }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleIntent(intent)
+    }
+
+    private fun handleIntent(i: Intent?) {
+        if (i?.getBooleanExtra(EXTRA_SETTINGS, false) == true) settingsRequest++
     }
 
     override fun onStart() {
@@ -46,10 +61,14 @@ class MainActivity : ComponentActivity() {
         super.onStop()
         wasStopped = true
     }
+
+    companion object {
+        const val EXTRA_SETTINGS = "open_settings"
+    }
 }
 
 @Composable
-private fun PlannerRoot(vm: PlannerViewModel) {
+private fun PlannerRoot(vm: PlannerViewModel, settingsRequest: Int) {
     val settings by vm.settings.collectAsState()
     val password by vm.password.collectAsState()
     val unlocked by vm.unlocked.collectAsState()
@@ -62,14 +81,15 @@ private fun PlannerRoot(vm: PlannerViewModel) {
         when {
             s == null || pw == null -> Box(Modifier.fillMaxSize().background(skin.bg))
             pw.type != PasswordInfo.NONE && !unlocked -> LockScreen(pw, vm)
-            else -> PlannerApp(vm)
+            else -> PlannerApp(vm, settingsRequest)
         }
     }
 }
 
 @Composable
-private fun PlannerApp(vm: PlannerViewModel) {
+private fun PlannerApp(vm: PlannerViewModel, settingsRequest: Int) {
     var showSettings by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(settingsRequest) { if (settingsRequest > 0) showSettings = true }
     BackHandler(enabled = showSettings) { showSettings = false }
 
     if (showSettings) {
