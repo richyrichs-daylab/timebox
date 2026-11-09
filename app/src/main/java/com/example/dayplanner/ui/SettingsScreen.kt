@@ -45,6 +45,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -54,6 +55,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -76,6 +78,9 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 
+/** Abstand zwischen den Gruppen von Balken-Buttons. */
+private val GroupGap = 32.dp
+
 @Composable
 fun SettingsScreen(vm: PlannerViewModel, onBack: () -> Unit) {
     val current by vm.settings.collectAsState()
@@ -85,10 +90,12 @@ fun SettingsScreen(vm: PlannerViewModel, onBack: () -> Unit) {
     val ink = skin.ink
     val focus = LocalFocusManager.current
     val context = LocalContext.current
+    val uriHandler = LocalUriHandler.current
     val systemDark = isSystemInDarkTheme()
 
     val now = rememberNow(s.lockUntil)
     val hardLock = s.lockUntil > now
+    val lockNow = s.lockActiveAt(now)
     val resetEnabled = !hardLock || s.lockReleasable
 
     var pwDialog by remember { mutableStateOf<Int?>(null) }
@@ -97,6 +104,7 @@ fun SettingsScreen(vm: PlannerViewModel, onBack: () -> Unit) {
     var showTimeLock by remember { mutableStateOf(false) }
     var showDayLock by remember { mutableStateOf(false) }
     var showAuto by remember { mutableStateOf(false) }
+    var showDaily by remember { mutableStateOf(false) }
 
     val preview = formatDate(LocalDate.now(), s.dateFormat)
     val modeName = stringResource(
@@ -109,6 +117,10 @@ fun SettingsScreen(vm: PlannerViewModel, onBack: () -> Unit) {
     val modeEnabled = s.designId.supportsMode()
 
     fun toast(res: Int) = Toast.makeText(context, context.getString(res), Toast.LENGTH_SHORT).show()
+
+    fun openLink(url: String) {
+        runCatching { uriHandler.openUri(url) }
+    }
 
     val exportLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("application/json")
@@ -158,11 +170,12 @@ fun SettingsScreen(vm: PlannerViewModel, onBack: () -> Unit) {
                     .fillMaxWidth()
                     .height(52.dp)
             ) {
+                val backDescription = stringResource(R.string.cd_back)
                 Box(
                     Modifier
                         .align(Alignment.CenterStart)
                         .size(44.dp)
-                        .semantics { contentDescription = "Back"; role = Role.Button }
+                        .semantics { contentDescription = backDescription; role = Role.Button }
                         .tapOrHold(onBack),
                     contentAlignment = Alignment.Center,
                 ) {
@@ -274,7 +287,7 @@ fun SettingsScreen(vm: PlannerViewModel, onBack: () -> Unit) {
                 }
             }
 
-            Spacer(Modifier.height(24.dp))
+            Spacer(Modifier.height(GroupGap))
 
             // ---------- Benachrichtigungen ----------
             Text(
@@ -305,7 +318,7 @@ fun SettingsScreen(vm: PlannerViewModel, onBack: () -> Unit) {
                 }
             }
 
-            Spacer(Modifier.height(24.dp))
+            Spacer(Modifier.height(GroupGap))
 
             // ---------- Zeitschloss / Tagesschloss ----------
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -339,13 +352,23 @@ fun SettingsScreen(vm: PlannerViewModel, onBack: () -> Unit) {
                 }
             }
 
-            Spacer(Modifier.height(24.dp))
+            Spacer(Modifier.height(GroupGap))
 
-            // ---------- Export und Backup ----------
+            // ---------- Tägliche Fragen und Export ----------
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                WideButton(
+                    stringResource(R.string.set_daily),
+                    Modifier.fillMaxWidth(),
+                    enabled = !lockNow,
+                ) { showDaily = true }
                 WideButton(stringResource(R.string.export_pdf), Modifier.fillMaxWidth()) { showPdf = true }
                 WideButton(stringResource(R.string.export_png), Modifier.fillMaxWidth()) { showPng = true }
-                Spacer(Modifier.height(4.dp))
+            }
+
+            Spacer(Modifier.height(GroupGap))
+
+            // ---------- Backup ----------
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 WideButton(stringResource(R.string.backup_export), Modifier.fillMaxWidth()) {
                     exportLauncher.launch("timebox-${LocalDate.now()}.json")
                 }
@@ -359,7 +382,7 @@ fun SettingsScreen(vm: PlannerViewModel, onBack: () -> Unit) {
                 WideButton(stringResource(R.string.backup_auto), Modifier.fillMaxWidth()) { showAuto = true }
             }
 
-            Spacer(Modifier.height(18.dp))
+            Spacer(Modifier.height(GroupGap))
 
             // ---------- Passwort ----------
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -378,7 +401,17 @@ fun SettingsScreen(vm: PlannerViewModel, onBack: () -> Unit) {
                 }
             }
 
-            Spacer(Modifier.height(24.dp))
+            Spacer(Modifier.height(GroupGap))
+
+            // ---------- Entwickler unterstützen ----------
+            PromoButton(
+                text = stringResource(R.string.btn_donate),
+                fill = Color(0xFFFFFA5C),
+                dash = Color(0xFFFF8F1F),
+                modifier = Modifier.fillMaxWidth(),
+            ) { openLink(Links.DONATE) }
+
+            Spacer(Modifier.height(GroupGap))
 
             // ---------- Layout-Designs, ohne Beschriftung ----------
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -392,7 +425,18 @@ fun SettingsScreen(vm: PlannerViewModel, onBack: () -> Unit) {
                     ) { vm.updateSettings { it.copy(design = index) } }
                 }
             }
-            Spacer(Modifier.height(8.dp))
+
+            Spacer(Modifier.height(16.dp))
+
+            // ---------- Mehr Designs ----------
+            PromoButton(
+                text = stringResource(R.string.btn_designs),
+                fill = Color(0xFFFF9966),
+                dash = Color(0xFFE8185A),
+                modifier = Modifier.fillMaxWidth(),
+            ) { openLink(Links.DESIGNS) }
+
+            Spacer(Modifier.height(16.dp))
         }
     }
 
@@ -405,6 +449,17 @@ fun SettingsScreen(vm: PlannerViewModel, onBack: () -> Unit) {
             onConfirm = { secret ->
                 vm.createPassword(type, secret)
                 pwDialog = null
+            },
+        )
+    }
+
+    if (showDaily) {
+        DailyDialog(
+            initial = s.dailyBraindump,
+            onCancel = { showDaily = false },
+            onConfirm = { text ->
+                showDaily = false
+                vm.setDailyBraindump(text)
             },
         )
     }
@@ -587,6 +642,7 @@ private fun DesignTile(
                 if (selected) current.ink else current.ink.copy(alpha = 0.35f),
             )
             .padding(3.dp)
+            .clipToBounds()
             .semantics { contentDescription = design.name; role = Role.Button }
             .tapOrHold(onClick)
     ) {
