@@ -25,7 +25,7 @@ jobs:
           gradle-version: 8.9
 
       - name: Debug-APK bauen
-        run: gradle assembleDebug --stacktrace
+        run: gradle assembleDebug --console=plain -PversionCode=${{ github.run_number }}
 
       - name: APK hochladen
         uses: actions/upload-artifact@v4
