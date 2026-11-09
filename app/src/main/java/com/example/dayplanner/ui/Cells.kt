@@ -26,6 +26,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -143,6 +144,15 @@ object NoIntrinsicHeight : LayoutModifier {
     ): Int = 0
 }
 
+/**
+ * Zugriff auf das gerade bearbeitete Textfeld (für die Kalender-Zeile über der Tastatur).
+ * kind: 0 = Priorität, 1 = Timebox-Zelle, 2 = Braindump. key: Index bzw. Zellenschlüssel.
+ */
+class EditHandle(val kind: Int, val key: Int) {
+    var read: () -> String = { "" }
+    var write: (String) -> Unit = {}
+}
+
 @Composable
 fun HLine(color: Color, thickness: Dp) {
     Box(
@@ -219,6 +229,9 @@ fun EditableCell(
     modifier: Modifier = Modifier,
     struck: Boolean = false,
     onDoubleTap: (() -> Unit)? = null,
+    handleKind: Int = -1,
+    handleKey: Int = 0,
+    onActive: ((EditHandle, Boolean) -> Unit)? = null,
 ) {
     val style = LocalTextStyle.current.copy(
         fontSize = 15.sp,
@@ -227,6 +240,14 @@ fun EditableCell(
     )
     var editing by remember { mutableStateOf(false) }
     var overflow by remember { mutableStateOf(false) }
+    val handle = remember(handleKind, handleKey) { EditHandle(handleKind, handleKey) }
+    val activeCallback by rememberUpdatedState(onActive)
+
+    DisposableEffect(editing, locked) {
+        val register = editing && !locked && handleKind >= 0 && activeCallback != null
+        if (register) activeCallback?.invoke(handle, true)
+        onDispose { if (register) activeCallback?.invoke(handle, false) }
+    }
 
     Box(
         modifier
@@ -244,6 +265,7 @@ fun EditableCell(
                 singleLine = !wrap,
                 enterSaves = true,
                 style = style,
+                handle = if (handleKind >= 0) handle else null,
                 modifier = Modifier.fillMaxWidth(),
                 onDone = { value ->
                     editing = false
@@ -278,6 +300,7 @@ fun BlockField(
     onCommit: (String) -> Unit,
     onStroke: (InkStroke) -> Unit,
     modifier: Modifier = Modifier,
+    onActive: ((EditHandle, Boolean) -> Unit)? = null,
 ) {
     val style = LocalTextStyle.current.copy(fontSize = 15.sp, color = ink)
     var editing by remember { mutableStateOf(false) }
@@ -285,12 +308,20 @@ fun BlockField(
     var erasing by remember { mutableStateOf(false) }
     val canDraw = drawingEnabled && !locked
     val keyboard = LocalSoftwareKeyboardController.current
+    val handle = remember { EditHandle(2, 0) }
+    val activeCallback by rememberUpdatedState(onActive)
 
     LaunchedEffect(editing, canDraw) {
         if (!editing || !canDraw) {
             drawing = false
             erasing = false
         }
+    }
+
+    DisposableEffect(editing, locked) {
+        val register = editing && !locked && activeCallback != null
+        if (register) activeCallback?.invoke(handle, true)
+        onDispose { if (register) activeCallback?.invoke(handle, false) }
     }
 
     Box(modifier.clipToBounds()) {
@@ -308,6 +339,7 @@ fun BlockField(
                     singleLine = false,
                     enterSaves = false,
                     style = style,
+                    handle = handle,
                     modifier = Modifier.fillMaxSize(),
                     onDone = { value ->
                         editing = false
@@ -505,6 +537,7 @@ private fun FieldEditor(
     singleLine: Boolean,
     enterSaves: Boolean,
     style: TextStyle,
+    handle: EditHandle?,
     modifier: Modifier,
     onDone: (String) -> Unit,
 ) {
@@ -520,6 +553,13 @@ private fun FieldEditor(
         if (!finished) {
             finished = true
             onDoneLatest(latest.text)
+        }
+    }
+
+    if (handle != null) {
+        SideEffect {
+            handle.read = { latest.text }
+            handle.write = { t -> value = TextFieldValue(t, TextRange(t.length)) }
         }
     }
 
