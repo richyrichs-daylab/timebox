@@ -23,6 +23,9 @@ private fun JSONObject?.toIntMap(): Map<Int, String> =
     if (this == null) emptyMap()
     else keys().asSequence().mapNotNull { k -> k.toIntOrNull()?.let { it to getString(k) } }.toMap()
 
+private fun JSONArray?.toIntSet(): Set<Int> =
+    if (this == null) emptySet() else (0 until length()).map { getInt(it) }.toSet()
+
 internal fun dayToJson(d: DayData): JSONObject {
     val o = JSONObject()
         .put("p", d.priorities.toJsonObj())
@@ -37,6 +40,8 @@ internal fun dayToJson(d: DayData): JSONObject {
         }
         o.put("d", arr)
     }
+    if (d.strikeP.isNotEmpty()) o.put("sp", JSONArray(d.strikeP.toList()))
+    if (d.strikeT.isNotEmpty()) o.put("st", JSONArray(d.strikeT.toList()))
     return o
 }
 
@@ -57,6 +62,8 @@ internal fun dayFromJson(o: JSONObject): DayData {
         timebox = o.optJSONObject("t").toIntMap(),
         braindump = o.optString("b", ""),
         strokes = strokes,
+        strikeP = o.optJSONArray("sp").toIntSet(),
+        strikeT = o.optJSONArray("st").toIntSet(),
     )
 }
 
