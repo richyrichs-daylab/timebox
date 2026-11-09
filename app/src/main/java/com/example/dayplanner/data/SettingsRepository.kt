@@ -51,6 +51,7 @@ fun Settings.toJson(forBackup: Boolean = false): JSONObject {
         .put("notifPrios", notifPrios)
         .put("notifBoth", notifBoth)
         .put("allowRelease", allowRelease)
+        .put("dailyBraindump", dailyBraindump)
     if (!forBackup) {
         o.put("lockUntil", lockUntil)
             .put("lockReleasable", lockReleasable)
@@ -58,6 +59,7 @@ fun Settings.toJson(forBackup: Boolean = false): JSONObject {
             .put("autoBackupN", autoBackupN)
             .put("autoBackupUnit", autoBackupUnit)
             .put("lastBackup", lastBackup)
+            .put("dailyFilledUntil", dailyFilledUntil)
     }
     return o
 }
@@ -99,6 +101,8 @@ fun settingsFromJson(o: JSONObject): Settings {
         autoBackupN = o.optInt("autoBackupN", d.autoBackupN),
         autoBackupUnit = o.optInt("autoBackupUnit", d.autoBackupUnit),
         lastBackup = o.optString("lastBackup", d.lastBackup),
+        dailyBraindump = o.optString("dailyBraindump", d.dailyBraindump),
+        dailyFilledUntil = o.optString("dailyFilledUntil", d.dailyFilledUntil),
     ).sanitized()
 }
 
@@ -110,6 +114,7 @@ fun Settings.keepRuntimeFrom(cur: Settings): Settings = copy(
     autoBackupN = cur.autoBackupN,
     autoBackupUnit = cur.autoBackupUnit,
     lastBackup = cur.lastBackup,
+    dailyFilledUntil = cur.dailyFilledUntil,
 )
 
 class SettingsRepository(context: Context) {
