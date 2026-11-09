@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Timebox</string>
+
+    <string name="priorities">Prioridades</string>
+    <string name="braindump">Volcado mental</string>
+    <string name="timebox">Timebox</string>
+
+    <string name="settings">Ajustes</string>
+    <string name="set_left_arrow">Flecha izquierda</string>
+    <string name="set_lock">Símbolo de candado</string>
+    <string name="set_share">Símbolo de compartir</string>
+    <string name="set_date_format">Formato de fecha: %1$s</string>
+    <string name="set_rows">Filas</string>
+    <string name="set_columns">Columnas</string>
+    <string name="set_day_start">Inicio del día</string>
+    <string name="set_mode">Modo: %1$s</string>
+    <string name="set_gray_past">Atenuar horas pasadas</string>
+    <string name="set_priorities_count">Prioridades</string>
+    <string name="set_title_priorities">Título: Prioridades</string>
+    <string name="set_title_braindump">Título: Volcado mental</string>
+    <string name="set_title_timebox">Título: Timebox</string>
+    <string name="set_wrap">Ajuste de línea</string>
+    <string name="set_zoom">Zoom</string>
+    <string name="set_drawing">Modo de dibujo</string>
+    <string name="set_highlight_now">Resaltar la hora actual</string>
+    <string name="set_strike">Tachar con doble toque</string>
+
+    <string name="mode_system">Predeterminado</string>
+    <string name="mode_light">Claro</string>
+    <string name="mode_dark">Oscuro</string>
+
+    <string name="section_notifications">Notificaciones</string>
+    <string name="notif_plan">Plan del día por horas</string>
+    <string name="notif_prios">Prioridades del día</string>
+    <string name="notif_both">Prioridades + plan del día</string>
+    <string name="notif_channel">Resumen diario</string>
+
+    <string name="lock_time">Bloqueo por tiempo</string>
+    <string name="lock_day">Bloqueo por días</string>
+    <string name="set_allow_release">Permitir desbloqueo</string>
+    <string name="lock_until">Bloqueado hasta %1$s</string>
+    <string name="lock_hours">Horas</string>
+    <string name="lock_minutes">Minutos</string>
+
+    <string name="set_daily">Preguntas diarias</string>
+    <string name="export_pdf">Exportar como PDF</string>
+    <string name="export_png">Exportar como PNG</string>
+    <string name="export_ok">Guardado en Descargas</string>
+    <string name="backup_export">Exportar copia de seguridad</string>
+    <string name="backup_import">Importar copia de seguridad</string>
+    <string name="backup_auto">Automatizar copia de seguridad</string>
+    <string name="backup_export_ok">Copia exportada</string>
+    <string name="backup_import_ok">Copia importada</string>
+    <string name="backup_auto_on">Copia automática activada</string>
+    <string name="backup_auto_off">Copia automática desactivada</string>
+    <string name="backup_failed">Algo salió mal</string>
+
+    <string name="unit_daily">Diaria</string>
+    <string name="unit_weekly">Semanal</string>
+    <string name="unit_monthly">Mensual</string>
+    <string name="unit_yearly">Anual</string>
+
+    <string name="dlg_cancel">Cancelar</string>
+    <string name="dlg_start">Iniciar</string>
+    <string name="dlg_export">Exportar</string>
+    <string name="dlg_confirm">Confirmar</string>
+    <string name="dlg_disable">Desactivar</string>
+
+    <string name="pw_numeric">Crear contraseña numérica</string>
+    <string name="pw_text">Crear contraseña de caracteres</string>
+    <string name="pw_delete">Eliminar contraseña</string>
+    <string name="pw_cancel">Cancelar</string>
+    <string name="pw_confirm">Confirmar</string>
+    <string name="pw_hint_min">Al menos 4 caracteres</string>
+    <string name="pw_wrong">Contraseña incorrecta</string>
+
+    <string name="cal_from">+ del calendario</string>
+    <string name="cal_to">+ al calendario</string>
+    <string name="cal_none">No hay eventos este día</string>
+    <string name="cal_empty">Escribe primero un texto</string>
+    <string name="cal_denied">Acceso al calendario denegado</string>
+    <string name="cal_no_app">No se encontró ninguna app de calendario</string>
+
+    <string name="btn_donate">❤️ Apoyar al desarrollador 👍</string>
+    <string name="btn_designs">+ más diseños personalizados +</string>
+
+    <string name="cd_prev">Día anterior</string>
+    <string name="cd_next">Día siguiente</string>
+    <string name="cd_settings">Ajustes</string>
+    <string name="cd_lock">Modo de bloqueo</string>
+    <string name="cd_share">Compartir</string>
+    <string name="cd_reset">Desbloquear</string>
+    <string name="cd_date">Elegir fecha</string>
+    <string name="cd_back">Atrás</string>
+    <string name="cd_pen">Lápiz</string>
+    <string name="cd_eraser">Borrador</string>
+    <string name="cd_undo">Deshacer</string>
+
+    <string name="widget_prios">Prioridades</string>
+    <string name="widget_braindump">Volcado mental</string>
+    <string name="widget_timebox">Timebox</string>
+    <string name="widget_page">Página</string>
+    <string name="widget_page_nogear">Página sin engranaje</string>
+</resources>
