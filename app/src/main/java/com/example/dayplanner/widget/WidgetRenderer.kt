@@ -61,12 +61,36 @@ object WidgetRenderer {
         val canvas = Canvas(bitmap)
         canvas.scale(density, density)
 
-        val night = (ctx.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) ==
-            Configuration.UI_MODE_NIGHT_YES
-        val skin = resolveSkin(snap.settings.designId, snap.settings.themeMode, night)
+        val skin = resolveSkin(snap.settings.designId, snap.settings.themeMode, isNight(ctx))
         Painter(ctx, skin, snap, canvas, wDp, hDp).draw(kind)
         return bitmap
     }
+
+    /**
+     * Ganze Tagesseite für PDF, PNG und Teilen: oben nur das Datum, ohne runde Ecken.
+     * Breite in Pixeln, die Höhe ergibt sich aus dem Seitenverhältnis wDp:hDp.
+     */
+    fun renderPage(
+        ctx: Context,
+        settings: Settings,
+        data: DayData,
+        date: LocalDate,
+        wDp: Float,
+        hDp: Float,
+        pxWidth: Int,
+    ): Bitmap {
+        val scale = pxWidth / wDp
+        val bitmap = Bitmap.createBitmap(pxWidth, max(1, (hDp * scale).roundToInt()), Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bitmap)
+        canvas.scale(scale, scale)
+        val skin = resolveSkin(settings.designId, settings.themeMode, isNight(ctx))
+        Painter(ctx, skin, WidgetSnapshot(settings, data, date), canvas, wDp, hDp).drawExport()
+        return bitmap
+    }
+
+    private fun isNight(ctx: Context): Boolean =
+        (ctx.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) ==
+            Configuration.UI_MODE_NIGHT_YES
 }
 
 private class Painter(
@@ -106,8 +130,8 @@ private class Painter(
             WidgetKind.PRIOS -> prios(area, min(3, s.prioritiesFor(snap.date)))
             WidgetKind.BRAINDUMP -> braindump(area)
             WidgetKind.TIMEBOX -> timebox(area)
-            WidgetKind.PAGE -> page(true)
-            WidgetKind.PAGE_NOGEAR -> page(false)
+            WidgetKind.PAGE -> page(0)
+            WidgetKind.PAGE_NOGEAR -> page(1)
         }
 
         // Runde Ecken
@@ -120,10 +144,21 @@ private class Painter(
         c.restoreToCount(layer)
     }
 
-    private fun page(withGear: Boolean) {
+    /** Export-Seite: nur das Datum oben, keine runden Ecken. */
+    fun drawExport() {
+        background()
+        page(2)
+    }
+
+    /** mode: 0 = mit Zahnrad, 1 = ohne Zahnrad, 2 = Export (nur Datum). */
+    private fun page(mode: Int) {
         val headerH = 52f
         val head = RectF(gap, gap, w - gap, gap + headerH)
-        header(head, withGear)
+        if (mode == 2) {
+            dateBox(RectF(head.left + 40f, head.top, head.right - 40f, head.bottom))
+        } else {
+            header(head, mode == 0)
+        }
 
         val content = RectF(gap, head.bottom + gap, w - gap, h - gap)
         val leftW = (content.width() - gap) / (1f + 1.15f)
@@ -250,9 +285,10 @@ private class Painter(
     }
 
     /** Zelltext: einzeilig mit nebeligem Ende oder (bei Textumbruch) mehrzeilig. */
-    private fun cellText(text: String, r: RectF, color: Int, size: Float) {
+    private fun cellText(text: String, r: RectF, color: Int, size: Float, struck: Boolean) {
         if (text.isEmpty()) return
         val p = textPaint(regular, size, color)
+        p.isStrikeThruText = struck
         val padX = 6f
         c.save()
         c.clipRect(r)
@@ -297,6 +333,7 @@ private class Painter(
                 RectF(inner.left, top, inner.right, top + ch),
                 skin.fieldInk.toArgb(),
                 min(15f, ch * 0.55f),
+                snap.day.strikeP.contains(i),
             )
         }
     }
@@ -383,11 +420,13 @@ private class Painter(
                 val cr = RectF(x + lw, top, x + lw + cellW, top + rowH)
                 fillP.color = skin.timeFill.toArgb()
                 c.drawRect(cr, fillP)
+                val key = hour * 2 + col
                 cellText(
-                    snap.day.timebox[hour * 2 + col].orEmpty(),
+                    snap.day.timebox[key].orEmpty(),
                     cr,
                     skin.timeInk.toArgb(),
                     cellFont,
+                    snap.day.strikeT.contains(key),
                 )
                 x += lw + cellW
             }
@@ -422,9 +461,16 @@ private class Painter(
 
         // Datum immer mittig: links und rechts gleich viel Platz
         val side = max(sideLeft, sideRight)
-        val dateArea = RectF(r.left + side, r.top, r.right - side, r.bottom)
+        dateBox(RectF(r.left + side, r.top, r.right - side, r.bottom))
+    }
+
+    private fun dateBox(dateArea: RectF) {
         val chip = skin.chip
-        val box = if (chip != null) RectF(dateArea.left, dateArea.top + 3f, dateArea.right, dateArea.bottom - 3f) else dateArea
+        val box = if (chip != null) {
+            RectF(dateArea.left, dateArea.top + 3f, dateArea.right, dateArea.bottom - 3f)
+        } else {
+            dateArea
+        }
         if (chip != null) {
             fillP.color = chip.toArgb()
             c.drawRect(box, fillP)
