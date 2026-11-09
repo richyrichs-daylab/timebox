@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Timebox</string>
+
+    <string name="priorities">Приоритеты</string>
+    <string name="braindump">Выгрузка мыслей</string>
+    <string name="timebox">Timebox</string>
+
+    <string name="settings">Настройки</string>
+    <string name="set_left_arrow">Левая стрелка</string>
+    <string name="set_lock">Значок замка</string>
+    <string name="set_share">Значок «Поделиться»</string>
+    <string name="set_date_format">Формат даты: %1$s</string>
+    <string name="set_rows">Строки</string>
+    <string name="set_columns">Столбцы</string>
+    <string name="set_day_start">Начало дня</string>
+    <string name="set_mode">Режим: %1$s</string>
+    <string name="set_gray_past">Затенять прошедшие часы</string>
+    <string name="set_priorities_count">Приоритеты</string>
+    <string name="set_title_priorities">Заголовок: Приоритеты</string>
+    <string name="set_title_braindump">Заголовок: Выгрузка мыслей</string>
+    <string name="set_title_timebox">Заголовок: Timebox</string>
+    <string name="set_wrap">Перенос текста</string>
+    <string name="set_zoom">Масштабирование</string>
+    <string name="set_drawing">Режим рисования</string>
+    <string name="set_highlight_now">Выделять текущий час</string>
+    <string name="set_strike">Зачёркивание двойным касанием</string>
+
+    <string name="mode_system">По умолчанию</string>
+    <string name="mode_light">Светлый</string>
+    <string name="mode_dark">Тёмный</string>
+
+    <string name="section_notifications">Уведомления</string>
+    <string name="notif_plan">План дня по часам</string>
+    <string name="notif_prios">Приоритеты дня</string>
+    <string name="notif_both">Приоритеты + план дня</string>
+    <string name="notif_channel">Обзор дня</string>
+
+    <string name="lock_time">Блокировка по времени</string>
+    <string name="lock_day">Блокировка по дням</string>
+    <string name="set_allow_release">Разрешить разблокировку</string>
+    <string name="lock_until">Заблокировано до %1$s</string>
+    <string name="lock_hours">Часы</string>
+    <string name="lock_minutes">Минуты</string>
+
+    <string name="set_daily">Ежедневные вопросы</string>
+    <string name="export_pdf">Экспорт в PDF</string>
+    <string name="export_png">Экспорт в PNG</string>
+    <string name="export_ok">Сохранено в «Загрузки»</string>
+    <string name="backup_export">Экспорт резервной копии</string>
+    <string name="backup_import">Импорт резервной копии</string>
+    <string name="backup_auto">Автоматическое резервное копирование</string>
+    <string name="backup_export_ok">Копия экспортирована</string>
+    <string name="backup_import_ok">Копия импортирована</string>
+    <string name="backup_auto_on">Автокопирование включено</string>
+    <string name="backup_auto_off">Автокопирование отключено</string>
+    <string name="backup_failed">Что-то пошло не так</string>
+
+    <string name="unit_daily">Ежедневно</string>
+    <string name="unit_weekly">Еженедельно</string>
+    <string name="unit_monthly">Ежемесячно</string>
+    <string name="unit_yearly">Ежегодно</string>
+
+    <string name="dlg_cancel">Отмена</string>
+    <string name="dlg_start">Старт</string>
+    <string name="dlg_export">Экспортировать</string>
+    <string name="dlg_confirm">Подтвердить</string>
+    <string name="dlg_disable">Отключить</string>
+
+    <string name="pw_numeric">Создать цифровой пароль</string>
+    <string name="pw_text">Создать текстовый пароль</string>
+    <string name="pw_delete">Удалить пароль</string>
+    <string name="pw_cancel">Отмена</string>
+    <string name="pw_confirm">Подтвердить</string>
+    <string name="pw_hint_min">Не менее 4 символов</string>
+    <string name="pw_wrong">Неверный пароль</string>
+
+    <string name="cal_from">+ из календаря</string>
+    <string name="cal_to">+ в календарь</string>
+    <string name="cal_none">В этот день нет событий</string>
+    <string name="cal_empty">Сначала введите текст</string>
+    <string name="cal_denied">Доступ к календарю запрещён</string>
+    <string name="cal_no_app">Приложение календаря не найдено</string>
+
+    <string name="btn_donate">❤️ Поддержать разработчика 👍</string>
+    <string name="btn_designs">+ больше индивидуальных тем +</string>
+
+    <string name="cd_prev">Предыдущий день</string>
+    <string name="cd_next">Следующий день</string>
+    <string name="cd_settings">Настройки</string>
+    <string name="cd_lock">Режим блокировки</string>
+    <string name="cd_share">Поделиться</string>
+    <string name="cd_reset">Разблокировать</string>
+    <string name="cd_date">Выбрать дату</string>
+    <string name="cd_back">Назад</string>
+    <string name="cd_pen">Карандаш</string>
+    <string name="cd_eraser">Ластик</string>
+    <string name="cd_undo">Отменить</string>
+
+    <string name="widget_prios">Приоритеты</string>
+    <string name="widget_braindump">Выгрузка мыслей</string>
+    <string name="widget_timebox">Timebox</string>
+    <string name="widget_page">Страница</string>
+    <string name="widget_page_nogear">Страница без шестерёнки</string>
+</resources>
