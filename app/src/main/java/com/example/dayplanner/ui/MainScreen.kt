@@ -1,6 +1,9 @@
 package com.example.dayplanner.ui
 
-import androidx.compose.foundation.background
+import android.content.ClipData
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.calculatePan
@@ -25,6 +28,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.background
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -33,17 +37,21 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChanged
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -58,6 +66,9 @@ import androidx.compose.ui.unit.sp
 import com.example.dayplanner.R
 import com.example.dayplanner.data.DayState
 import com.example.dayplanner.data.Settings
+import kotlinx.coroutines.delay
+import java.time.LocalDate
+import java.time.ZoneId
 
 private val TitleHeight = 32.dp
 
@@ -70,6 +81,8 @@ fun MainScreen(vm: PlannerViewModel, onOpenSettings: () -> Unit) {
 
     val skin = LocalSkin.current
     val focus = LocalFocusManager.current
+    val context = LocalContext.current
+    val lockActive = rememberLockActive(s)
     var showCalendar by remember { mutableStateOf(false) }
     val gap = 8.dp // äußerer Rahmen = Abstand zwischen den Elementen
 
@@ -92,13 +105,18 @@ fun MainScreen(vm: PlannerViewModel, onOpenSettings: () -> Unit) {
             Header(
                 dateText = formatDate(d.date, s.dateFormat),
                 s = s,
+                lockActive = lockActive,
                 onPrev = { focus.clearFocus(); vm.shiftDay(-1) },
                 onNext = { focus.clearFocus(); vm.shiftDay(1) },
                 onSettings = onOpenSettings,
                 onToggleLock = { vm.toggleLock() },
+                onShare = {
+                    focus.clearFocus()
+                    vm.prepareShare { uri -> if (uri != null) shareImage(context, uri) }
+                },
                 onDate = { showCalendar = true },
             )
-            Content(s, d, vm, gap, Modifier.weight(1f).fillMaxWidth())
+            Content(s, d, vm, gap, lockActive, Modifier.weight(1f).fillMaxWidth())
         }
     }
 
@@ -111,13 +129,59 @@ fun MainScreen(vm: PlannerViewModel, onOpenSettings: () -> Unit) {
     }
 }
 
+/** Öffnet das typische Android-Teilen-Fenster für das PNG. */
+private fun shareImage(context: Context, uri: Uri) {
+    val send = Intent(Intent.ACTION_SEND).apply {
+        type = "image/png"
+        putExtra(Intent.EXTRA_STREAM, uri)
+        clipData = ClipData.newRawUri(null, uri)
+        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+    }
+    val chooser = Intent.createChooser(send, null).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    context.startActivity(chooser)
+}
+
+/** Aktuelle Zeit, minütlich aktualisiert (nur wenn Ausgrauen/Hervorheben aktiv ist). */
+@Composable
+private fun rememberMinuteClock(enabled: Boolean): Long {
+    var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    LaunchedEffect(enabled) {
+        while (enabled) {
+            now = System.currentTimeMillis()
+            delay(60_000L - now % 60_000L + 50L)
+        }
+    }
+    return now
+}
+
+/** -1 = vergangen, 0 = aktuelle Stunde, 1 = kommend. */
+private fun rowState(date: LocalDate, dayStart: Int, i: Int, nowMillis: Long): Int {
+    val zone = ZoneId.systemDefault()
+    val base = date.atTime(dayStart, 0)
+    val start = base.plusHours(i.toLong()).atZone(zone).toInstant().toEpochMilli()
+    val end = base.plusHours(i + 1L).atZone(zone).toInstant().toEpochMilli()
+    return when {
+        nowMillis >= end -> -1
+        nowMillis >= start -> 0
+        else -> 1
+    }
+}
+
 // ---------------------------------------------------------------- Inhalt
 
 @Composable
-private fun Content(s: Settings, d: DayState, vm: PlannerViewModel, gap: Dp, modifier: Modifier) {
+private fun Content(
+    s: Settings,
+    d: DayState,
+    vm: PlannerViewModel,
+    gap: Dp,
+    lockActive: Boolean,
+    modifier: Modifier,
+) {
     val skin = LocalSkin.current
     var scale by remember { mutableFloatStateOf(1f) }
     var offset by remember { mutableStateOf(Offset.Zero) }
+    val now = rememberMinuteClock(s.grayPast || s.highlightNow)
     LaunchedEffect(s.zoom) {
         if (!s.zoom) {
             scale = 1f
@@ -190,12 +254,12 @@ private fun Content(s: Settings, d: DayState, vm: PlannerViewModel, gap: Dp, mod
                         verticalArrangement = Arrangement.spacedBy(gap),
                     ) {
                         if (s.showPrioritiesTitle) SectionTitle(stringResource(R.string.priorities))
-                        PrioritiesBox(s.prioritiesFor(d.date), d, s, vm)
+                        PrioritiesBox(s.prioritiesFor(d.date), d, s, lockActive, vm)
                         if (s.showBraindumpTitle) SectionTitle(stringResource(R.string.braindump))
                         BlockField(
                             text = d.data.braindump,
                             strokes = d.data.strokes,
-                            locked = s.lockActive,
+                            locked = lockActive,
                             drawingEnabled = s.drawing,
                             ink = skin.fieldInk,
                             onCommit = { vm.setBraindump(d.date, it) },
@@ -214,7 +278,7 @@ private fun Content(s: Settings, d: DayState, vm: PlannerViewModel, gap: Dp, mod
                         verticalArrangement = Arrangement.spacedBy(gap),
                     ) {
                         if (s.showTimeboxTitle) SectionTitle(stringResource(R.string.timebox))
-                        Timebox(s, d, vm, rowMin)
+                        Timebox(s, d, vm, rowMin, lockActive, now)
                     }
                 }
             }
@@ -228,15 +292,24 @@ private fun Content(s: Settings, d: DayState, vm: PlannerViewModel, gap: Dp, mod
 private fun Header(
     dateText: String,
     s: Settings,
+    lockActive: Boolean,
     onPrev: () -> Unit,
     onNext: () -> Unit,
     onSettings: () -> Unit,
     onToggleLock: () -> Unit,
+    onShare: () -> Unit,
     onDate: () -> Unit,
 ) {
     val skin = LocalSkin.current
     val ink = skin.ink
     val chip = skin.chip
+
+    // Datum IMMER mittig: links und rechts wird gleich viel Platz reserviert.
+    val slot = 44
+    val sideLeft = (if (s.showLeftArrow) slot else 0) + slot
+    val sideRight = (if (s.showLock) slot else 0) + (if (s.showShare) slot else 0) + slot
+    val side = maxOf(sideLeft, sideRight).dp
+
     Box(
         Modifier
             .fillMaxWidth()
@@ -253,13 +326,12 @@ private fun Header(
             }
         }
 
-        // Datum: immer exakt mittig (links und rechts gleich viel Platz reserviert)
         AutoSizeText(
             text = dateText,
             color = if (chip != null) skin.chipInk else ink,
             modifier = Modifier
                 .align(Alignment.Center)
-                .padding(horizontal = 92.dp)
+                .padding(horizontal = side)
                 .fillMaxSize()
                 .then(if (chip != null) Modifier.padding(vertical = 3.dp).background(chip) else Modifier)
                 .semantics { contentDescription = dateText; role = Role.Button }
@@ -269,7 +341,12 @@ private fun Header(
         Row(Modifier.align(Alignment.CenterEnd)) {
             if (s.showLock) {
                 IconSlot(stringResource(R.string.cd_lock), onToggleLock) {
-                    LockIcon(locked = s.lockActive, color = ink, modifier = Modifier.size(30.dp))
+                    LockIcon(locked = lockActive, color = ink, modifier = Modifier.size(30.dp))
+                }
+            }
+            if (s.showShare) {
+                IconSlot(stringResource(R.string.cd_share), onShare) {
+                    ShareIcon(color = ink, modifier = Modifier.size(26.dp))
                 }
             }
             IconSlot(stringResource(R.string.cd_next), onNext) {
@@ -331,7 +408,13 @@ private fun SectionTitle(text: String) {
 // ---------------------------------------------------------------- Prioritäten
 
 @Composable
-private fun PrioritiesBox(count: Int, day: DayState, s: Settings, vm: PlannerViewModel) {
+private fun PrioritiesBox(
+    count: Int,
+    day: DayState,
+    s: Settings,
+    lockActive: Boolean,
+    vm: PlannerViewModel,
+) {
     val skin = LocalSkin.current
     Column(
         Modifier
@@ -342,13 +425,15 @@ private fun PrioritiesBox(count: Int, day: DayState, s: Settings, vm: PlannerVie
             if (i > 0) HLine(skin.line, skin.lineWidth)
             EditableCell(
                 text = day.data.priorities[i].orEmpty(),
-                locked = s.lockActive,
+                locked = lockActive,
                 wrap = s.wrapText,
                 ink = skin.fieldInk,
                 onCommit = { vm.setPriority(day.date, i, it) },
                 modifier = Modifier
                     .fillMaxWidth()
                     .heightIn(min = 44.dp),
+                struck = i in day.data.strikeP,
+                onDoubleTap = if (s.strikeDouble) ({ vm.toggleStrikePriority(day.date, i) }) else null,
             )
         }
     }
@@ -357,7 +442,14 @@ private fun PrioritiesBox(count: Int, day: DayState, s: Settings, vm: PlannerVie
 // ---------------------------------------------------------------- Timebox
 
 @Composable
-private fun Timebox(s: Settings, day: DayState, vm: PlannerViewModel, rowMin: Dp) {
+private fun Timebox(
+    s: Settings,
+    day: DayState,
+    vm: PlannerViewModel,
+    rowMin: Dp,
+    lockActive: Boolean,
+    now: Long,
+) {
     val skin = LocalSkin.current
     val hourFont = (rowMin.value * 0.55f).coerceIn(9f, 17f).sp
 
@@ -369,12 +461,28 @@ private fun Timebox(s: Settings, day: DayState, vm: PlannerViewModel, rowMin: Dp
         for (i in 0 until s.rows) {
             val hour = (s.dayStart + i) % 24
             if (i > 0) HLine(skin.lineAt(i.toFloat() / s.rows), skin.lineWidth)
+
+            val state = rowState(day.date, s.dayStart, i, now)
+            val gray = s.grayPast && state < 0
+            val highlight = s.highlightNow && state == 0
+
             // Nur Zeilen mit mehrzeiligem Text werden höher, alle anderen behalten rowMin.
             Row(
                 Modifier
                     .fillMaxWidth()
                     .heightIn(min = rowMin)
                     .height(IntrinsicSize.Min)
+                    .then(if (gray) Modifier.alpha(0.4f) else Modifier)
+                    .then(
+                        if (highlight) {
+                            Modifier.drawWithContent {
+                                drawContent()
+                                drawRect(skin.accent.copy(alpha = 0.22f))
+                            }
+                        } else {
+                            Modifier
+                        }
+                    )
             ) {
                 Box(
                     Modifier
@@ -396,7 +504,7 @@ private fun Timebox(s: Settings, day: DayState, vm: PlannerViewModel, rowMin: Dp
                     val cellKey = hour * 2 + c
                     EditableCell(
                         text = day.data.timebox[cellKey].orEmpty(),
-                        locked = s.lockActive,
+                        locked = lockActive,
                         wrap = s.wrapText,
                         ink = skin.timeInk,
                         onCommit = { vm.setTimebox(day.date, cellKey, it) },
@@ -404,6 +512,8 @@ private fun Timebox(s: Settings, day: DayState, vm: PlannerViewModel, rowMin: Dp
                             .weight(1f)
                             .fillMaxHeight()
                             .background(skin.timeFill),
+                        struck = cellKey in day.data.strikeT,
+                        onDoubleTap = if (s.strikeDouble) ({ vm.toggleStrikeTimebox(day.date, cellKey) }) else null,
                     )
                 }
             }
