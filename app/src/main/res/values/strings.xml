@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Day Planner</string>
+    <string name="app_name">Timebox</string>
 
     <string name="priorities">Priorities</string>
     <string name="braindump">Braindump</string>
@@ -9,11 +9,13 @@
     <string name="settings">Settings</string>
     <string name="set_left_arrow">Left arrow</string>
     <string name="set_lock">Lock symbol</string>
+    <string name="set_share">Share symbol</string>
     <string name="set_date_format">Date format: %1$s</string>
     <string name="set_rows">Rows</string>
     <string name="set_columns">Columns</string>
     <string name="set_day_start">Day start</string>
     <string name="set_mode">Mode: %1$s</string>
+    <string name="set_gray_past">Gray out past hours</string>
     <string name="set_priorities_count">Priorities</string>
     <string name="set_title_priorities">Title: Priorities</string>
     <string name="set_title_braindump">Title: Braindump</string>
@@ -21,16 +23,48 @@
     <string name="set_wrap">Text wrap</string>
     <string name="set_zoom">Zoom</string>
     <string name="set_drawing">Drawing mode</string>
+    <string name="set_highlight_now">Highlight current hour</string>
+    <string name="set_strike">Strike through by double tap</string>
 
     <string name="mode_system">Default</string>
     <string name="mode_light">Light</string>
     <string name="mode_dark">Dark</string>
 
+    <string name="section_notifications">Notifications</string>
+    <string name="notif_plan">Day plan by hour</string>
+    <string name="notif_prios">Priorities</string>
+    <string name="notif_both">Priorities + day plan</string>
+    <string name="notif_channel">Daily overview</string>
+
+    <string name="lock_time">Time lock</string>
+    <string name="lock_day">Day lock</string>
+    <string name="set_allow_release">Allow unlocking</string>
+    <string name="lock_until">Locked until %1$s</string>
+    <string name="lock_hours">Hours</string>
+    <string name="lock_minutes">Minutes</string>
+
+    <string name="export_pdf">Export as PDF</string>
+    <string name="export_png">Export as PNG</string>
+    <string name="export_ok">Saved to Downloads</string>
     <string name="backup_export">Export backup</string>
     <string name="backup_import">Import backup</string>
+    <string name="backup_auto">Automate backup</string>
     <string name="backup_export_ok">Backup exported</string>
     <string name="backup_import_ok">Backup imported</string>
+    <string name="backup_auto_on">Automatic backup enabled</string>
+    <string name="backup_auto_off">Automatic backup disabled</string>
     <string name="backup_failed">Something went wrong</string>
+
+    <string name="unit_daily">Daily</string>
+    <string name="unit_weekly">Weekly</string>
+    <string name="unit_monthly">Monthly</string>
+    <string name="unit_yearly">Yearly</string>
+
+    <string name="dlg_cancel">Cancel</string>
+    <string name="dlg_start">Start</string>
+    <string name="dlg_export">Export</string>
+    <string name="dlg_confirm">Confirm</string>
+    <string name="dlg_disable">Disable</string>
 
     <string name="pw_numeric">Create numeric password</string>
     <string name="pw_text">Create character password</string>
@@ -44,6 +78,8 @@
     <string name="cd_next">Next day</string>
     <string name="cd_settings">Settings</string>
     <string name="cd_lock">Lock-in mode</string>
+    <string name="cd_share">Share</string>
+    <string name="cd_reset">Unlock</string>
     <string name="cd_date">Choose date</string>
     <string name="cd_back">Back</string>
     <string name="cd_pen">Pen</string>
