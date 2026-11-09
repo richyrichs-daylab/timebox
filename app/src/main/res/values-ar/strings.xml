@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Timebox</string>
+
+    <string name="priorities">الأولويات</string>
+    <string name="braindump">تفريغ الأفكار</string>
+    <string name="timebox">Timebox</string>
+
+    <string name="settings">الإعدادات</string>
+    <string name="set_left_arrow">السهم الأيسر</string>
+    <string name="set_lock">رمز القفل</string>
+    <string name="set_share">رمز المشاركة</string>
+    <string name="set_date_format">تنسيق التاريخ: %1$s</string>
+    <string name="set_rows">الصفوف</string>
+    <string name="set_columns">الأعمدة</string>
+    <string name="set_day_start">بداية اليوم</string>
+    <string name="set_mode">الوضع: %1$s</string>
+    <string name="set_gray_past">تعتيم الساعات الماضية</string>
+    <string name="set_priorities_count">الأولويات</string>
+    <string name="set_title_priorities">العنوان: الأولويات</string>
+    <string name="set_title_braindump">العنوان: تفريغ الأفكار</string>
+    <string name="set_title_timebox">العنوان: Timebox</string>
+    <string name="set_wrap">التفاف النص</string>
+    <string name="set_zoom">التكبير</string>
+    <string name="set_drawing">وضع الرسم</string>
+    <string name="set_highlight_now">تمييز الساعة الحالية</string>
+    <string name="set_strike">الشطب بنقر مزدوج</string>
+
+    <string name="mode_system">افتراضي</string>
+    <string name="mode_light">فاتح</string>
+    <string name="mode_dark">داكن</string>
+
+    <string name="section_notifications">الإشعارات</string>
+    <string name="notif_plan">خطة اليوم حسب الساعات</string>
+    <string name="notif_prios">أولويات اليوم</string>
+    <string name="notif_both">الأولويات + خطة اليوم</string>
+    <string name="notif_channel">ملخص يومي</string>
+
+    <string name="lock_time">قفل بالوقت</string>
+    <string name="lock_day">قفل بالأيام</string>
+    <string name="set_allow_release">السماح بإلغاء القفل</string>
+    <string name="lock_until">مقفل حتى %1$s</string>
+    <string name="lock_hours">ساعات</string>
+    <string name="lock_minutes">دقائق</string>
+
+    <string name="set_daily">أسئلة يومية</string>
+    <string name="export_pdf">تصدير بصيغة PDF</string>
+    <string name="export_png">تصدير بصيغة PNG</string>
+    <string name="export_ok">تم الحفظ في التنزيلات</string>
+    <string name="backup_export">تصدير نسخة احتياطية</string>
+    <string name="backup_import">استيراد نسخة احتياطية</string>
+    <string name="backup_auto">أتمتة النسخ الاحتياطي</string>
+    <string name="backup_export_ok">تم تصدير النسخة</string>
+    <string name="backup_import_ok">تم استيراد النسخة</string>
+    <string name="backup_auto_on">تم تفعيل النسخ التلقائي</string>
+    <string name="backup_auto_off">تم إيقاف النسخ التلقائي</string>
+    <string name="backup_failed">حدث خطأ ما</string>
+
+    <string name="unit_daily">يوميًا</string>
+    <string name="unit_weekly">أسبوعيًا</string>
+    <string name="unit_monthly">شهريًا</string>
+    <string name="unit_yearly">سنويًا</string>
+
+    <string name="dlg_cancel">إلغاء</string>
+    <string name="dlg_start">ابدأ</string>
+    <string name="dlg_export">تصدير</string>
+    <string name="dlg_confirm">تأكيد</string>
+    <string name="dlg_disable">إيقاف</string>
+
+    <string name="pw_numeric">إنشاء رمز رقمي</string>
+    <string name="pw_text">إنشاء كلمة مرور نصية</string>
+    <string name="pw_delete">حذف كلمة المرور</string>
+    <string name="pw_cancel">إلغاء</string>
+    <string name="pw_confirm">تأكيد</string>
+    <string name="pw_hint_min">4 أحرف على الأقل</string>
+    <string name="pw_wrong">كلمة المرور خاطئة</string>
+
+    <string name="cal_from">+ من التقويم</string>
+    <string name="cal_to">+ إلى التقويم</string>
+    <string name="cal_none">لا توجد أحداث في هذا اليوم</string>
+    <string name="cal_empty">اكتب نصًا أولًا</string>
+    <string name="cal_denied">تم رفض الوصول إلى التقويم</string>
+    <string name="cal_no_app">لم يتم العثور على تطبيق تقويم</string>
+
+    <string name="btn_donate">❤️ ادعم المطوّر 👍</string>
+    <string name="btn_designs">+ المزيد من التصاميم المخصصة +</string>
+
+    <string name="cd_prev">اليوم السابق</string>
+    <string name="cd_next">اليوم التالي</string>
+    <string name="cd_settings">الإعدادات</string>
+    <string name="cd_lock">وضع القفل</string>
+    <string name="cd_share">مشاركة</string>
+    <string name="cd_reset">إلغاء القفل</string>
+    <string name="cd_date">اختيار التاريخ</string>
+    <string name="cd_back">رجوع</string>
+    <string name="cd_pen">قلم</string>
+    <string name="cd_eraser">ممحاة</string>
+    <string name="cd_undo">تراجع</string>
+
+    <string name="widget_prios">الأولويات</string>
+    <string name="widget_braindump">تفريغ الأفكار</string>
+    <string name="widget_timebox">Timebox</string>
+    <string name="widget_page">صفحة</string>
+    <string name="widget_page_nogear">صفحة بدون ترس</string>
+</resources>
