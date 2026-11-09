@@ -12,12 +12,25 @@ android {
         applicationId = "com.example.dayplanner"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "0.1"
+        versionCode = (project.findProperty("versionCode") as? String)?.toIntOrNull() ?: 1
+        versionName = "0.2"
+    }
+
+    signingConfigs {
+        create("shared") {
+            storeFile = file("debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
     }
 
     buildTypes {
-        release { isMinifyEnabled = false }
+        getByName("debug") { signingConfig = signingConfigs.getByName("shared") }
+        release {
+            isMinifyEnabled = false
+            signingConfig = signingConfigs.getByName("shared")
+        }
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
