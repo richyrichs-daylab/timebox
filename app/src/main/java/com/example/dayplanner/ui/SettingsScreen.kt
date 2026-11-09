@@ -1,5 +1,8 @@
 package com.example.dayplanner.ui
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -63,10 +66,15 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import com.example.dayplanner.R
 import com.example.dayplanner.data.Design
 import com.example.dayplanner.data.PasswordInfo
+import java.time.Instant
 import java.time.LocalDate
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
 
 @Composable
 fun SettingsScreen(vm: PlannerViewModel, onBack: () -> Unit) {
@@ -78,7 +86,17 @@ fun SettingsScreen(vm: PlannerViewModel, onBack: () -> Unit) {
     val focus = LocalFocusManager.current
     val context = LocalContext.current
     val systemDark = isSystemInDarkTheme()
+
+    val now = rememberNow(s.lockUntil)
+    val hardLock = s.lockUntil > now
+    val resetEnabled = !hardLock || s.lockReleasable
+
     var pwDialog by remember { mutableStateOf<Int?>(null) }
+    var showPdf by remember { mutableStateOf(false) }
+    var showPng by remember { mutableStateOf(false) }
+    var showTimeLock by remember { mutableStateOf(false) }
+    var showDayLock by remember { mutableStateOf(false) }
+    var showAuto by remember { mutableStateOf(false) }
 
     val preview = formatDate(LocalDate.now(), s.dateFormat)
     val modeName = stringResource(
@@ -104,6 +122,18 @@ fun SettingsScreen(vm: PlannerViewModel, onBack: () -> Unit) {
     ) { uri ->
         if (uri != null) {
             vm.importBackup(uri) { ok -> toast(if (ok) R.string.backup_import_ok else R.string.backup_failed) }
+        }
+    }
+    val notifPermission = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { }
+
+    fun ensureNotifPermission() {
+        if (Build.VERSION.SDK_INT >= 33 &&
+            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS)
+            != PackageManager.PERMISSION_GRANTED
+        ) {
+            notifPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
     }
 
@@ -148,8 +178,8 @@ fun SettingsScreen(vm: PlannerViewModel, onBack: () -> Unit) {
             }
             Spacer(Modifier.height(16.dp))
 
+            // ---------- Zwei Spalten ----------
             Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
-                // ---------- linke Spalte ----------
                 Column(
                     Modifier.weight(1f).padding(end = 12.dp),
                     verticalArrangement = Arrangement.spacedBy(18.dp),
@@ -158,10 +188,13 @@ fun SettingsScreen(vm: PlannerViewModel, onBack: () -> Unit) {
                         SkinSwitch(s.showLeftArrow) { v -> vm.updateSettings { it.copy(showLeftArrow = v) } }
                     }
                     SettingRow(stringResource(R.string.set_lock)) {
-                        // Abwählen hebt einen aktiven Lock-in-Modus auf.
+                        // Abwählen hebt einen aktiven Lock-in-Modus (ohne Zeitsperre) auf.
                         SkinSwitch(s.showLock) { v ->
                             vm.updateSettings { it.copy(showLock = v, locked = if (v) it.locked else false) }
                         }
+                    }
+                    SettingRow(stringResource(R.string.set_share)) {
+                        SkinSwitch(s.showShare) { v -> vm.updateSettings { it.copy(showShare = v) } }
                     }
                     SettingRow(stringResource(R.string.set_date_format, preview)) {
                         SquareButton(s.dateFormat.toString()) {
@@ -199,12 +232,14 @@ fun SettingsScreen(vm: PlannerViewModel, onBack: () -> Unit) {
                             ModeIcon(s.themeMode, ink, Modifier.size(30.dp))
                         }
                     }
+                    SettingRow(stringResource(R.string.set_gray_past)) {
+                        SkinSwitch(s.grayPast) { v -> vm.updateSettings { it.copy(grayPast = v) } }
+                    }
                 }
 
                 // ---------- dünner schwarzer Strich ----------
                 Box(Modifier.width(1.dp).fillMaxHeight().background(ink))
 
-                // ---------- rechte Spalte ----------
                 Column(
                     Modifier.weight(1f).padding(start = 12.dp),
                     verticalArrangement = Arrangement.spacedBy(18.dp),
@@ -230,19 +265,98 @@ fun SettingsScreen(vm: PlannerViewModel, onBack: () -> Unit) {
                     SettingRow(stringResource(R.string.set_drawing)) {
                         SkinSwitch(s.drawing) { v -> vm.updateSettings { it.copy(drawing = v) } }
                     }
+                    SettingRow(stringResource(R.string.set_highlight_now)) {
+                        SkinSwitch(s.highlightNow) { v -> vm.updateSettings { it.copy(highlightNow = v) } }
+                    }
+                    SettingRow(stringResource(R.string.set_strike)) {
+                        SkinSwitch(s.strikeDouble) { v -> vm.updateSettings { it.copy(strikeDouble = v) } }
+                    }
                 }
             }
 
             Spacer(Modifier.height(24.dp))
 
-            // ---------- Backups ----------
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                WideButton(stringResource(R.string.backup_export), Modifier.fillMaxWidth()) {
-                    exportLauncher.launch("dayplanner-${LocalDate.now()}.json")
+            // ---------- Benachrichtigungen ----------
+            Text(
+                stringResource(R.string.section_notifications),
+                color = ink,
+                fontWeight = FontWeight.ExtraBold,
+                fontSize = 18.sp,
+            )
+            Spacer(Modifier.height(12.dp))
+            Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                SettingRow(stringResource(R.string.notif_plan)) {
+                    SkinSwitch(s.notifPlan) { v ->
+                        if (v) ensureNotifPermission()
+                        vm.updateSettings { it.copy(notifPlan = v) }
+                    }
                 }
-                WideButton(stringResource(R.string.backup_import), Modifier.fillMaxWidth()) {
+                SettingRow(stringResource(R.string.notif_prios)) {
+                    SkinSwitch(s.notifPrios) { v ->
+                        if (v) ensureNotifPermission()
+                        vm.updateSettings { it.copy(notifPrios = v) }
+                    }
+                }
+                SettingRow(stringResource(R.string.notif_both)) {
+                    SkinSwitch(s.notifBoth) { v ->
+                        if (v) ensureNotifPermission()
+                        vm.updateSettings { it.copy(notifBoth = v) }
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(24.dp))
+
+            // ---------- Zeitschloss / Tagesschloss ----------
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    WideButton(stringResource(R.string.lock_time), Modifier.weight(1f), minHeight = 44.dp) {
+                        showTimeLock = true
+                    }
+                    ResetBox(resetEnabled) { vm.releaseLock() }
+                }
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    WideButton(stringResource(R.string.lock_day), Modifier.weight(1f), minHeight = 44.dp) {
+                        showDayLock = true
+                    }
+                    ResetBox(resetEnabled) { vm.releaseLock() }
+                }
+                SettingRow(stringResource(R.string.set_allow_release)) {
+                    SkinSwitch(s.allowRelease) { v -> vm.updateSettings { it.copy(allowRelease = v) } }
+                }
+                if (hardLock) {
+                    val until = Instant.ofEpochMilli(s.lockUntil).atZone(ZoneId.systemDefault())
+                        .format(DateTimeFormatter.ofLocalizedDateTime(FormatStyle.SHORT))
+                    Text(stringResource(R.string.lock_until, until), color = ink, fontSize = 13.sp)
+                }
+            }
+
+            Spacer(Modifier.height(24.dp))
+
+            // ---------- Export und Backup ----------
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                WideButton(stringResource(R.string.export_pdf), Modifier.fillMaxWidth()) { showPdf = true }
+                WideButton(stringResource(R.string.export_png), Modifier.fillMaxWidth()) { showPng = true }
+                Spacer(Modifier.height(4.dp))
+                WideButton(stringResource(R.string.backup_export), Modifier.fillMaxWidth()) {
+                    exportLauncher.launch("timebox-${LocalDate.now()}.json")
+                }
+                WideButton(
+                    stringResource(R.string.backup_import),
+                    Modifier.fillMaxWidth(),
+                    enabled = !hardLock,
+                ) {
                     importLauncher.launch(arrayOf("*/*"))
                 }
+                WideButton(stringResource(R.string.backup_auto), Modifier.fillMaxWidth()) { showAuto = true }
             }
 
             Spacer(Modifier.height(18.dp))
@@ -282,6 +396,8 @@ fun SettingsScreen(vm: PlannerViewModel, onBack: () -> Unit) {
         }
     }
 
+    // ---------- Pop-ups ----------
+
     pwDialog?.let { type ->
         PasswordDialog(
             numeric = type == PasswordInfo.NUMERIC,
@@ -289,6 +405,70 @@ fun SettingsScreen(vm: PlannerViewModel, onBack: () -> Unit) {
             onConfirm = { secret ->
                 vm.createPassword(type, secret)
                 pwDialog = null
+            },
+        )
+    }
+
+    if (showPdf) {
+        MultiDayDialog(
+            confirmText = stringResource(R.string.dlg_export),
+            onCancel = { showPdf = false },
+            onConfirm = { dates ->
+                showPdf = false
+                vm.exportPdf(dates) { ok -> toast(if (ok) R.string.export_ok else R.string.backup_failed) }
+            },
+        )
+    }
+
+    if (showPng) {
+        MultiDayDialog(
+            confirmText = stringResource(R.string.dlg_export),
+            onCancel = { showPng = false },
+            onConfirm = { dates ->
+                showPng = false
+                vm.exportPng(dates) { ok -> toast(if (ok) R.string.export_ok else R.string.backup_failed) }
+            },
+        )
+    }
+
+    if (showTimeLock) {
+        TimeLockDialog(
+            onCancel = { showTimeLock = false },
+            onStart = { ms ->
+                showTimeLock = false
+                vm.startTimeLock(ms)
+            },
+        )
+    }
+
+    if (showDayLock) {
+        SingleDayDialog(
+            minDate = LocalDate.now(),
+            confirmText = stringResource(R.string.dlg_start),
+            onCancel = { showDayLock = false },
+            onConfirm = { date ->
+                showDayLock = false
+                vm.startDayLock(date)
+            },
+        )
+    }
+
+    if (showAuto) {
+        AutoBackupDialog(
+            active = s.autoBackup,
+            initialN = s.autoBackupN,
+            initialUnit = s.autoBackupUnit,
+            onCancel = { showAuto = false },
+            onDisable = {
+                showAuto = false
+                vm.disableAutoBackup()
+                toast(R.string.backup_auto_off)
+            },
+            onConfirm = { n, unit ->
+                showAuto = false
+                vm.enableAutoBackup(n, unit) { ok ->
+                    toast(if (ok) R.string.backup_auto_on else R.string.backup_failed)
+                }
             },
         )
     }
@@ -335,6 +515,24 @@ private fun SquareButton(text: String, onClick: () -> Unit) {
         contentAlignment = Alignment.Center,
     ) {
         Text(text, color = ink, fontWeight = FontWeight.Bold, fontSize = 20.sp)
+    }
+}
+
+/** Quadratischer Kasten mit rundem Reset-Pfeil. */
+@Composable
+private fun ResetBox(enabled: Boolean, onClick: () -> Unit) {
+    val ink = LocalSkin.current.ink
+    val description = stringResource(R.string.cd_reset)
+    Box(
+        Modifier
+            .size(44.dp)
+            .alpha(if (enabled) 1f else 0.35f)
+            .border(1.5.dp, ink)
+            .semantics { contentDescription = description; role = Role.Button }
+            .then(if (enabled) Modifier.tapOrHold(onClick) else Modifier),
+        contentAlignment = Alignment.Center,
+    ) {
+        ResetIcon(ink, Modifier.size(28.dp))
     }
 }
 
