@@ -8,6 +8,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -178,10 +179,10 @@ fun resolveSkin(design: Design, mode: Int, systemDark: Boolean): Skin {
 
 val LocalSkin = staticCompositionLocalOf { resolveSkin(Design.STANDARD, 0, false) }
 
-/** Hintergrund des Designs (Karo, Himmel, einfarbig). */
+/** Hintergrund des Designs (Karo, Himmel, einfarbig). Zeichnet nie über den eigenen Rand hinaus. */
 @Composable
 fun SkinBackground(skin: Skin, modifier: Modifier = Modifier, unit: Dp = 36.dp) {
-    Canvas(modifier) {
+    Canvas(modifier.clipToBounds()) {
         when (skin.design) {
             Design.CANDY -> {
                 drawRect(skin.bg)
