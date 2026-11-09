@@ -28,6 +28,10 @@ import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.time.LocalDate
 import java.time.ZoneId
+import java.time.temporal.ChronoUnit
+
+/** So viele Tage im Voraus wird die Vorlage der "täglichen Fragen" eingetragen. */
+private const val DAILY_WINDOW_DAYS = 365L
 
 class PlannerViewModel(app: Application) : AndroidViewModel(app) {
     private val settingsRepo = SettingsRepository(app)
@@ -51,6 +55,7 @@ class PlannerViewModel(app: Application) : AndroidViewModel(app) {
         selectDate(currentDate)
         viewModelScope.launch {
             applySchedules()
+            ensureDailyWindow()
             runCatching { AutoBackup.runIfDue(getApplication<Application>()) }
         }
     }
@@ -82,7 +87,10 @@ class PlannerViewModel(app: Application) : AndroidViewModel(app) {
 
     fun shiftDay(delta: Long) = selectDate(currentDate.plusDays(delta))
 
-    fun goToday() = selectDate(LocalDate.now())
+    fun goToday() {
+        selectDate(LocalDate.now())
+        viewModelScope.launch { ensureDailyWindow() }
+    }
 
     // ---------- Bearbeiten ----------
 
@@ -91,6 +99,13 @@ class PlannerViewModel(app: Application) : AndroidViewModel(app) {
 
     fun setTimebox(date: LocalDate, key: Int, text: String) =
         edit(date) { it.copy(timebox = it.timebox.withEntry(key, text)) }
+
+    /** Hängt Text an eine Timebox-Zelle an (z. B. ein Kalendertermin). */
+    fun appendTimebox(date: LocalDate, key: Int, add: String) =
+        edit(date) { d ->
+            val cur = d.timebox[key].orEmpty()
+            d.copy(timebox = d.timebox.withEntry(key, if (cur.isBlank()) add else "$cur · $add"))
+        }
 
     fun setBraindump(date: LocalDate, text: String) =
         edit(date) { it.copy(braindump = text) }
@@ -123,6 +138,36 @@ class PlannerViewModel(app: Application) : AndroidViewModel(app) {
 
     private fun Map<Int, String>.withEntry(key: Int, value: String): Map<Int, String> =
         if (value.isEmpty()) this - key else this + (key to value)
+
+    // ---------- Tägliche Fragen ----------
+
+    /**
+     * Trägt den Text ab morgen in die Braindumps der nächsten 365 Tage ein. Tage mit eigenem Text
+     * bleiben unverändert. Tage, die noch den alten Vorlagentext tragen, werden aktualisiert.
+     */
+    fun setDailyBraindump(text: String) {
+        viewModelScope.launch {
+            val old = settingsRepo.current().dailyBraindump
+            val from = LocalDate.now().plusDays(1)
+            dayRepo.applyBraindump(from, DAILY_WINDOW_DAYS.toInt(), old, text)
+            val until = if (text.isEmpty()) "" else LocalDate.now().plusDays(DAILY_WINDOW_DAYS).toString()
+            settingsRepo.update { it.copy(dailyBraindump = text, dailyFilledUntil = until) }
+            selectDate(currentDate)
+        }
+    }
+
+    /** Verlängert das Zeitfenster der Vorlage bei jedem Start um die neu hinzugekommenen Tage. */
+    private suspend fun ensureDailyWindow() {
+        val s = settingsRepo.current()
+        if (s.dailyBraindump.isEmpty()) return
+        val target = LocalDate.now().plusDays(DAILY_WINDOW_DAYS)
+        val filled = runCatching { LocalDate.parse(s.dailyFilledUntil) }.getOrNull()
+        val from = filled?.plusDays(1) ?: LocalDate.now().plusDays(1)
+        if (from.isAfter(target)) return
+        val n = (ChronoUnit.DAYS.between(from, target) + 1).toInt()
+        dayRepo.applyBraindump(from, n, "", s.dailyBraindump)
+        settingsRepo.update { it.copy(dailyFilledUntil = target.toString()) }
+    }
 
     // ---------- Einstellungen ----------
 
