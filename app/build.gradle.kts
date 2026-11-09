@@ -10,10 +10,10 @@ android {
 
     defaultConfig {
         applicationId = "com.example.dayplanner"
-        minSdk = 26
+        minSdk = 29
         targetSdk = 35
         versionCode = (project.findProperty("versionCode") as? String)?.toIntOrNull() ?: 1
-        versionName = "0.2"
+        versionName = "0.3"
     }
 
     signingConfigs {
