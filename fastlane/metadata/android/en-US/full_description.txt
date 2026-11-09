@@ -1,0 +1,5 @@
+Timebox is a minimal day planner. Every day has three parts: your top priorities, an hourly timebox and a free braindump you can also draw on.
+
+Everything stays on your device. There is no account, no tracking and no internet access.
+
+Features: six layout designs, home screen widgets, daily notifications, time and day locks, PDF and PNG export, automatic backups, optional password, calendar import and export, and seven languages.
