@@ -49,4 +49,10 @@
     <string name="cd_pen">Pen</string>
     <string name="cd_eraser">Eraser</string>
     <string name="cd_undo">Undo</string>
+
+    <string name="widget_prios">Priorities</string>
+    <string name="widget_braindump">Braindump</string>
+    <string name="widget_timebox">Timebox</string>
+    <string name="widget_page">Page</string>
+    <string name="widget_page_nogear">Page without gear</string>
 </resources>
