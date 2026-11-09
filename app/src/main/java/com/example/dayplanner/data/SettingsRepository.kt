@@ -20,24 +20,47 @@ import javax.crypto.spec.PBEKeySpec
 
 private val Context.settingsStore by preferencesDataStore(name = "settings")
 
-fun Settings.toJson(): JSONObject = JSONObject()
-    .put("showLeftArrow", showLeftArrow)
-    .put("showLock", showLock)
-    .put("dateFormat", dateFormat)
-    .put("rows", rows)
-    .put("columns", columns)
-    .put("dayStart", dayStart)
-    .put("priorities", priorities)
-    .put("priorityHistory", JSONObject(priorityHistory as Map<*, *>))
-    .put("showPrioritiesTitle", showPrioritiesTitle)
-    .put("showBraindumpTitle", showBraindumpTitle)
-    .put("showTimeboxTitle", showTimeboxTitle)
-    .put("wrapText", wrapText)
-    .put("locked", locked)
-    .put("design", design)
-    .put("themeMode", themeMode)
-    .put("zoom", zoom)
-    .put("drawing", drawing)
+/**
+ * forBackup = true lässt geräte- und sicherheitsbezogene Werte weg
+ * (laufende Sperre, automatisches Backup).
+ */
+fun Settings.toJson(forBackup: Boolean = false): JSONObject {
+    val o = JSONObject()
+        .put("showLeftArrow", showLeftArrow)
+        .put("showLock", showLock)
+        .put("dateFormat", dateFormat)
+        .put("rows", rows)
+        .put("columns", columns)
+        .put("dayStart", dayStart)
+        .put("priorities", priorities)
+        .put("priorityHistory", JSONObject(priorityHistory as Map<*, *>))
+        .put("showPrioritiesTitle", showPrioritiesTitle)
+        .put("showBraindumpTitle", showBraindumpTitle)
+        .put("showTimeboxTitle", showTimeboxTitle)
+        .put("wrapText", wrapText)
+        .put("locked", locked)
+        .put("design", design)
+        .put("themeMode", themeMode)
+        .put("zoom", zoom)
+        .put("drawing", drawing)
+        .put("showShare", showShare)
+        .put("grayPast", grayPast)
+        .put("highlightNow", highlightNow)
+        .put("strikeDouble", strikeDouble)
+        .put("notifPlan", notifPlan)
+        .put("notifPrios", notifPrios)
+        .put("notifBoth", notifBoth)
+        .put("allowRelease", allowRelease)
+    if (!forBackup) {
+        o.put("lockUntil", lockUntil)
+            .put("lockReleasable", lockReleasable)
+            .put("autoBackup", autoBackup)
+            .put("autoBackupN", autoBackupN)
+            .put("autoBackupUnit", autoBackupUnit)
+            .put("lastBackup", lastBackup)
+    }
+    return o
+}
 
 fun settingsFromJson(o: JSONObject): Settings {
     val d = Settings()
@@ -62,8 +85,32 @@ fun settingsFromJson(o: JSONObject): Settings {
         themeMode = o.optInt("themeMode", d.themeMode),
         zoom = o.optBoolean("zoom", d.zoom),
         drawing = o.optBoolean("drawing", d.drawing),
+        showShare = o.optBoolean("showShare", d.showShare),
+        grayPast = o.optBoolean("grayPast", d.grayPast),
+        highlightNow = o.optBoolean("highlightNow", d.highlightNow),
+        strikeDouble = o.optBoolean("strikeDouble", d.strikeDouble),
+        notifPlan = o.optBoolean("notifPlan", d.notifPlan),
+        notifPrios = o.optBoolean("notifPrios", d.notifPrios),
+        notifBoth = o.optBoolean("notifBoth", d.notifBoth),
+        allowRelease = o.optBoolean("allowRelease", d.allowRelease),
+        lockUntil = o.optLong("lockUntil", d.lockUntil),
+        lockReleasable = o.optBoolean("lockReleasable", d.lockReleasable),
+        autoBackup = o.optBoolean("autoBackup", d.autoBackup),
+        autoBackupN = o.optInt("autoBackupN", d.autoBackupN),
+        autoBackupUnit = o.optInt("autoBackupUnit", d.autoBackupUnit),
+        lastBackup = o.optString("lastBackup", d.lastBackup),
     ).sanitized()
 }
+
+/** Beim Import eines Backups bleiben Sperre und automatisches Backup des Geräts erhalten. */
+fun Settings.keepRuntimeFrom(cur: Settings): Settings = copy(
+    lockUntil = cur.lockUntil,
+    lockReleasable = cur.lockReleasable,
+    autoBackup = cur.autoBackup,
+    autoBackupN = cur.autoBackupN,
+    autoBackupUnit = cur.autoBackupUnit,
+    lastBackup = cur.lastBackup,
+)
 
 class SettingsRepository(context: Context) {
     private val store = context.applicationContext.settingsStore
