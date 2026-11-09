@@ -25,9 +25,25 @@ data class Settings(
     val themeMode: Int = 0,               // 0 Standard, 1 hell, 2 dunkel
     val zoom: Boolean = false,
     val drawing: Boolean = true,
+    val showShare: Boolean = false,
+    val grayPast: Boolean = false,
+    val highlightNow: Boolean = false,
+    val strikeDouble: Boolean = false,
+    val notifPlan: Boolean = false,
+    val notifPrios: Boolean = false,
+    val notifBoth: Boolean = false,
+    val allowRelease: Boolean = true,     // Toggle "Lock-in-Aufhebung"
+    val lockUntil: Long = 0L,             // Ende der Zeit-/Tagessperre (Epoch-Millis), 0 = keine
+    val lockReleasable: Boolean = true,   // beim Start der Sperre festgehalten
+    val autoBackup: Boolean = false,
+    val autoBackupN: Int = 1,
+    val autoBackupUnit: Int = 0,          // 0 täglich, 1 wöchentlich, 2 monatlich, 3 jährlich
+    val lastBackup: String = "",          // ISO-Datum
 ) {
-    /** Lock-in-Modus ist nur aktiv, wenn auch das Schloss-Symbol eingeschaltet ist. */
-    val lockActive: Boolean get() = locked && showLock
+    /** Lock-in-Modus: manuell (Schloss-Symbol) oder durch eine laufende Zeit-/Tagessperre. */
+    fun lockActiveAt(now: Long): Boolean = (locked && showLock) || lockUntil > now
+
+    val lockActive: Boolean get() = lockActiveAt(System.currentTimeMillis())
 
     val designId: Design get() = Design.entries.getOrElse(design) { Design.STANDARD }
 
@@ -39,6 +55,8 @@ data class Settings(
         priorities = priorities.coerceIn(1, 10),
         design = design.coerceIn(0, Design.entries.size - 1),
         themeMode = themeMode.coerceIn(0, 2),
+        autoBackupN = autoBackupN.coerceIn(1, 999),
+        autoBackupUnit = autoBackupUnit.coerceIn(0, 3),
     )
 
     /** Anzahl der Prioritäten, die an einem bestimmten Tag gelten. */
@@ -59,6 +77,8 @@ data class DayData(
     val timebox: Map<Int, String> = emptyMap(),   // Schlüssel = Stunde * 2 + Spalte
     val braindump: String = "",
     val strokes: List<InkStroke> = emptyList(),
+    val strikeP: Set<Int> = emptySet(),           // durchgestrichene Prioritäten (Index)
+    val strikeT: Set<Int> = emptySet(),           // durchgestrichene Timebox-Zellen (Schlüssel)
 )
 
 data class DayState(val date: LocalDate, val data: DayData)
