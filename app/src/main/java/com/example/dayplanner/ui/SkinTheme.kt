@@ -10,9 +10,11 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.core.view.WindowCompat
 
 private fun Typography.withAppFont(f: FontFamily) = copy(
@@ -46,7 +48,11 @@ fun SkinTheme(skin: Skin, content: @Composable () -> Unit) {
         }
     }
     val typography = remember { Typography().withAppFont(AppFont) }
-    CompositionLocalProvider(LocalSkin provides skin) {
+    // Das Layout wird nie gespiegelt: Datum, Pfeile und Spalten bleiben in jeder Sprache an ihrem Platz.
+    CompositionLocalProvider(
+        LocalSkin provides skin,
+        LocalLayoutDirection provides LayoutDirection.Ltr,
+    ) {
         MaterialTheme(
             colorScheme = lightColorScheme(
                 primary = skin.accent,
