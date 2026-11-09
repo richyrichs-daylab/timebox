@@ -43,6 +43,7 @@
     <string name="lock_hours">Hours</string>
     <string name="lock_minutes">Minutes</string>
 
+    <string name="set_daily">Daily questions</string>
     <string name="export_pdf">Export as PDF</string>
     <string name="export_png">Export as PNG</string>
     <string name="export_ok">Saved to Downloads</string>
@@ -73,6 +74,16 @@
     <string name="pw_confirm">Confirm</string>
     <string name="pw_hint_min">At least 4 characters</string>
     <string name="pw_wrong">Wrong password</string>
+
+    <string name="cal_from">+ from calendar</string>
+    <string name="cal_to">+ to calendar</string>
+    <string name="cal_none">No events on this day</string>
+    <string name="cal_empty">Enter text first</string>
+    <string name="cal_denied">Calendar access denied</string>
+    <string name="cal_no_app">No calendar app found</string>
+
+    <string name="btn_donate">❤️ Support the developer 👍</string>
+    <string name="btn_designs">+ more individual designs +</string>
 
     <string name="cd_prev">Previous day</string>
     <string name="cd_next">Next day</string>
