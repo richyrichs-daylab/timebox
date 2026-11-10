@@ -5,7 +5,7 @@
 <h2 align="center">Timebox</h2>
 
 <p align="center">
-  <img src="assets/icon_main2.png" alt="App Feature Banner" width="100%" />
+  <img src="assets/icon_main2.png" alt="App Feature Banner" width="200" />
 </p>
 
 [![Kotlin](https://img.shields.io/badge/Kotlin-2.0.21-7F52FF?style=for-the-badge&logo=kotlin&logoColor=white&labelColor=555555)](https://kotlinlang.org)
