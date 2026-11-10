@@ -4,6 +4,8 @@
 
 <h2 align="center">Timebox</h2>
 
+![](https://shields.io)
+
 <h3 align="center">Harvard's favorite time management method</h3>
 
 ### Core Functions
