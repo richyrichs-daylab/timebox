@@ -4,6 +4,10 @@
 
 <h2 align="center">Timebox</h2>
 
+<p align="center">
+  <img src="assets/icon_main2.png" alt="App Feature Banner" width="100%" />
+</p>
+
 [![Kotlin](https://img.shields.io/badge/Kotlin-2.0.21-7F52FF?style=for-the-badge&logo=kotlin&logoColor=white&labelColor=555555)](https://kotlinlang.org)
 [![Android](https://img.shields.io/badge/Android-API%2029%2B-3DDC84?style=for-the-badge&logo=android&logoColor=white&labelColor=555555)](https://developer.android.com)
 [![Jetpack Compose](https://img.shields.io/badge/Jetpack%20Compose-Material%203-4285F4?style=for-the-badge&logo=jetpackcompose&logoColor=white&labelColor=555555)](https://developer.android.com/jetpack/compose)
@@ -17,7 +21,7 @@
 [![Contributors](https://img.shields.io/github/contributors/richyrichs-daylab/timebox?style=for-the-badge&logo=github&logoColor=white&color=8E24AA&labelColor=555555)](https://github.com/richyrichs-daylab/timebox/graphs/contributors)
 [![Views](https://hits.sh/github.com/richyrichs-daylab/timebox.svg?style=for-the-badge&label=VIEWS&color=5B8C7A&labelColor=555555)](https://github.com/richyrichs-daylab/timebox)
 
-<h3 align="center">Harvard's favorite time management method</h3>
+<h3 align="center">Harvard's Favorite Time Management Method</h3>
 
 ### Core Functions
 * **Timetable ("timebox")**
@@ -31,7 +35,7 @@
 * **not done yet** — more specification settings are on their way ...
 
 ### Hidden Features (already built in 😱)
-**• backups
+* backups
 • PDF export
 • daily calendar import & export
 • password settings
@@ -39,7 +43,13 @@
 • sketching
 • daily journaling
 • "lock in" mode
-• WIDGETS on Android**
+• WIDGETS on Android
+
+---
+### Languages 🌎
+* Deutsch 🇩🇪
+* English 🇺🇸
+* under development
 ---
 
 ### ❤️ Donations
