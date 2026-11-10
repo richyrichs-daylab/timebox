@@ -5,9 +5,10 @@
 <h2 align="center">Timebox</h2>
 
 <p align="center">
-  <img src="https://shields.io" alt="Kotlin Badge">
+  <a href="https://kotlinlang.org">
+    <img src="https://shields.io" alt="Kotlin">
+  </a>
 </p>
-
 
 <h3 align="center">Harvard's favorite time management method</h3>
 
