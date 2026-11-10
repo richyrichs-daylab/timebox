@@ -30,7 +30,7 @@
 ---
 
 ### ❤️ Donations
-*Stripe Link:* [much thanks](YOUR_STRIPE_LINK_HERE)
+*Stripe Link:* [much thanks](https://donate.stripe.com/eVq3cv8XAbah7W3gSm8bS00)
 
 ### 👨‍⚖️ Legal Stuff
 Copyright © 2026 F. H. (richyrichs-daylab). All Rights Reserved.
