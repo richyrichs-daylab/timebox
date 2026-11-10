@@ -18,7 +18,7 @@
 * **not done yet** — more specification settings are on their way ...
 
 ### Hidden Features (already built in 😱)
-* **• backups
+**• backups
 • PDF export
 • daily calendar import & export
 • password settings
