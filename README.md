@@ -4,7 +4,10 @@
 
 <h2 align="center">Timebox</h2>
 
-![](https://shields.io)
+<p align="center">
+  <img src="https://shields.io" alt="Kotlin Badge">
+</p>
+
 
 <h3 align="center">Harvard's favorite time management method</h3>
 
