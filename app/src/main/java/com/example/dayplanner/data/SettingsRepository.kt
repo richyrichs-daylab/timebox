@@ -22,7 +22,7 @@ private val Context.settingsStore by preferencesDataStore(name = "settings")
 
 /**
  * forBackup = true lässt geräte- und sicherheitsbezogene Werte weg
- * (laufende Sperre, automatisches Backup).
+ * (laufende Sperre, automatisches Backup, Backup-Passwort).
  */
 fun Settings.toJson(forBackup: Boolean = false): JSONObject {
     val o = JSONObject()
@@ -40,6 +40,7 @@ fun Settings.toJson(forBackup: Boolean = false): JSONObject {
         .put("wrapText", wrapText)
         .put("locked", locked)
         .put("design", design)
+        .put("customDesign", customDesign)
         .put("themeMode", themeMode)
         .put("zoom", zoom)
         .put("drawing", drawing)
@@ -60,6 +61,8 @@ fun Settings.toJson(forBackup: Boolean = false): JSONObject {
             .put("autoBackupUnit", autoBackupUnit)
             .put("lastBackup", lastBackup)
             .put("dailyFilledUntil", dailyFilledUntil)
+            .put("backupSalt", backupSalt)
+            .put("backupKey", backupKey)
     }
     return o
 }
@@ -84,6 +87,7 @@ fun settingsFromJson(o: JSONObject): Settings {
         wrapText = o.optBoolean("wrapText", d.wrapText),
         locked = o.optBoolean("locked", d.locked),
         design = o.optInt("design", d.design),
+        customDesign = o.optString("customDesign", d.customDesign),
         themeMode = o.optInt("themeMode", d.themeMode),
         zoom = o.optBoolean("zoom", d.zoom),
         drawing = o.optBoolean("drawing", d.drawing),
@@ -103,10 +107,12 @@ fun settingsFromJson(o: JSONObject): Settings {
         lastBackup = o.optString("lastBackup", d.lastBackup),
         dailyBraindump = o.optString("dailyBraindump", d.dailyBraindump),
         dailyFilledUntil = o.optString("dailyFilledUntil", d.dailyFilledUntil),
+        backupSalt = o.optString("backupSalt", d.backupSalt),
+        backupKey = o.optString("backupKey", d.backupKey),
     ).sanitized()
 }
 
-/** Beim Import eines Backups bleiben Sperre und automatisches Backup des Geräts erhalten. */
+/** Beim Import eines Backups bleiben Sperre, automatisches Backup und Backup-Passwort des Geräts erhalten. */
 fun Settings.keepRuntimeFrom(cur: Settings): Settings = copy(
     lockUntil = cur.lockUntil,
     lockReleasable = cur.lockReleasable,
@@ -115,6 +121,8 @@ fun Settings.keepRuntimeFrom(cur: Settings): Settings = copy(
     autoBackupUnit = cur.autoBackupUnit,
     lastBackup = cur.lastBackup,
     dailyFilledUntil = cur.dailyFilledUntil,
+    backupSalt = cur.backupSalt,
+    backupKey = cur.backupKey,
 )
 
 class SettingsRepository(context: Context) {
