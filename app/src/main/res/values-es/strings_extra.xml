@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="backup_pw">Establecer contraseña de copia</string>
+    <string name="backup_pw_on">Contraseña de copia establecida</string>
+    <string name="backup_pw_off">Contraseña de copia eliminada</string>
+    <string name="backup_pw_enter">Contraseña de la copia</string>
+    <string name="backup_pw_wrong">Contraseña de copia incorrecta</string>
+    <string name="design_import_ok">Diseño importado</string>
+    <string name="design_import_failed">Archivo de diseño no válido</string>
+    <string name="cd_import_design">Importar diseño</string>
+</resources>
