@@ -25,11 +25,17 @@ abstract class PlannerWidgetProvider(private val kind: WidgetKind) : AppWidgetPr
         refresh(context, manager, intArrayOf(appWidgetId))
     }
 
+    override fun onDeleted(context: Context, appWidgetIds: IntArray) {
+        WidgetState.clear(context, appWidgetIds)
+    }
+
     override fun onReceive(context: Context, intent: Intent) {
         when (intent.action) {
             Intent.ACTION_DATE_CHANGED,
             Intent.ACTION_TIME_CHANGED,
             Intent.ACTION_TIMEZONE_CHANGED -> {
+                // Um Mitternacht springen alle Widgets wieder auf heute.
+                WidgetState.resetAll(context)
                 val manager = AppWidgetManager.getInstance(context)
                 val ids = manager.getAppWidgetIds(ComponentName(context, this::class.java))
                 refresh(context, manager, ids)
@@ -44,8 +50,7 @@ abstract class PlannerWidgetProvider(private val kind: WidgetKind) : AppWidgetPr
         val app = context.applicationContext
         CoroutineScope(Dispatchers.Default).launch {
             try {
-                val snap = WidgetRenderer.snapshot(app)
-                WidgetUpdater.update(app, manager, kind, ids, snap)
+                WidgetUpdater.update(app, manager, kind, ids)
             } finally {
                 pending.finish()
             }
