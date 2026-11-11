@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="backup_pw">تعيين كلمة مرور للنسخة الاحتياطية</string>
+    <string name="backup_pw_on">تم تعيين كلمة مرور النسخة الاحتياطية</string>
+    <string name="backup_pw_off">تمت إزالة كلمة مرور النسخة الاحتياطية</string>
+    <string name="backup_pw_enter">كلمة مرور النسخة الاحتياطية</string>
+    <string name="backup_pw_wrong">كلمة مرور النسخة الاحتياطية خاطئة</string>
+    <string name="design_import_ok">تم استيراد التصميم</string>
+    <string name="design_import_failed">ملف تصميم غير صالح</string>
+    <string name="cd_import_design">استيراد تصميم</string>
+</resources>
