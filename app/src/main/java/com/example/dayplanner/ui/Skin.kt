@@ -14,13 +14,17 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.example.dayplanner.data.Design
+import kotlin.math.cos
+import kotlin.math.sin
 
-/** Alles, was ein Layout-Design ausmacht. */
+/** Alles, was ein Layout-Design ausmacht (eingebaut oder aus einer Design-Datei). */
 @Immutable
 class Skin(
     val design: Design,
@@ -45,6 +49,18 @@ class Skin(
     val chipInk: Color = ink,
     val glow: Boolean = false,
     val upperTitles: Boolean = false,
+    // ---- nur für Design-Dateien ----
+    val gradient: List<Color>? = null,      // senkrechter Farbverlauf als Hintergrund
+    val clouds: Boolean = false,            // weiche Wolken im Hintergrund
+    val sun: Boolean = false,               // Sonne oben rechts
+    val titleStyle: Int = 0,                // 0 schlicht, 1 Wolken-Etikett, 2 bunter Reiter
+    val titleFills: List<Color> = emptyList(), // pro Titel: Prioritäten, Braindump, Timebox
+    val titleInk: Color? = null,
+    val titleShadow: Color? = null,         // Schattenstreifen am Reiter
+    val shadowColor: Color? = null,         // versetzter Schlagschatten der Rahmen
+    val shadowOffset: Dp = 0.dp,
+    val hourHighlight: Color? = null,       // Farbe der Stundenzelle bei "aktuelle Stunde hervorheben"
+    val customId: String = "",
 ) {
     fun lineAt(fraction: Float): Color =
         lineEnd?.let { lerp(line, it, fraction.coerceIn(0f, 1f)) } ?: line
@@ -179,7 +195,7 @@ fun resolveSkin(design: Design, mode: Int, systemDark: Boolean): Skin {
 
 val LocalSkin = staticCompositionLocalOf { resolveSkin(Design.STANDARD, 0, false) }
 
-/** Hintergrund des Designs (Karo, Himmel, einfarbig). Zeichnet nie über den eigenen Rand hinaus. */
+/** Hintergrund des Designs (Karo, Himmel, Verlauf, einfarbig). Zeichnet nie über den eigenen Rand hinaus. */
 @Composable
 fun SkinBackground(skin: Skin, modifier: Modifier = Modifier, unit: Dp = 36.dp) {
     Canvas(modifier.clipToBounds()) {
@@ -211,14 +227,61 @@ fun SkinBackground(skin: Skin, modifier: Modifier = Modifier, unit: Dp = 36.dp) 
                 puff(0.10f, 0.85f, size.width * 0.22f)
                 puff(0.85f, 0.95f, size.width * 0.18f)
             }
-            else -> drawRect(skin.bg)
+            else -> {
+                val g = skin.gradient
+                if (g != null) drawRect(Brush.verticalGradient(g)) else drawRect(skin.bg)
+            }
         }
+        if (skin.sun) drawSun()
+        if (skin.clouds) drawSoftClouds()
     }
 }
 
-/** Rahmen des Designs: Füllung, Außenlinie, bei Neon mit Leuchten. */
+private fun DrawScope.drawSun() {
+    val c = Offset(size.width * 0.86f, size.height * 0.07f)
+    val r = size.width * 0.075f
+    val ray = Color(0xFFFFE9A0)
+    for (i in 0 until 9) {
+        val a = 2.0 * Math.PI * i / 9
+        drawLine(
+            ray,
+            Offset(c.x + (r * 1.25f * cos(a)).toFloat(), c.y + (r * 1.25f * sin(a)).toFloat()),
+            Offset(c.x + (r * 1.8f * cos(a)).toFloat(), c.y + (r * 1.8f * sin(a)).toFloat()),
+            strokeWidth = r * 0.28f,
+            cap = StrokeCap.Round,
+        )
+    }
+    drawCircle(Color(0xFFFFE27A), r, c)
+}
+
+private fun DrawScope.drawSoftClouds() {
+    val col = Color.White.copy(alpha = 0.55f)
+    val w = size.width
+    val h = size.height
+    fun puff(cx: Float, cy: Float, r: Float) {
+        drawCircle(col, r, Offset(w * cx, h * cy))
+        drawCircle(col, r * 0.8f, Offset(w * (cx - 0.09f), h * (cy + 0.012f)))
+        drawCircle(col, r * 0.75f, Offset(w * (cx + 0.10f), h * (cy + 0.016f)))
+        drawCircle(col, r * 0.6f, Offset(w * (cx + 0.02f), h * (cy - 0.018f)))
+    }
+    puff(0.84f, 0.12f, w * 0.10f)
+    puff(0.10f, 0.40f, w * 0.12f)
+    puff(0.12f, 0.70f, w * 0.15f)
+    puff(0.88f, 0.64f, w * 0.14f)
+    puff(0.30f, 0.97f, w * 0.17f)
+    puff(0.84f, 0.97f, w * 0.15f)
+}
+
+/** Rahmen des Designs: Füllung, Außenlinie, Schlagschatten, bei Neon mit Leuchten. */
 fun Modifier.skinFrame(skin: Skin, fill: Color, color: Color = skin.frame): Modifier {
     var m = this
+    val shadow = skin.shadowColor
+    if (shadow != null && skin.shadowOffset > 0.dp) {
+        m = m.drawBehind {
+            val o = skin.shadowOffset.toPx()
+            drawRect(shadow, topLeft = Offset(o, o), size = size)
+        }
+    }
     if (skin.glow) {
         m = m.drawBehind {
             val fw = skin.frameWidth.toPx()
