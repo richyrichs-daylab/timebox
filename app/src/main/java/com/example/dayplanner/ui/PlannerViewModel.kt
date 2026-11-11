@@ -2,10 +2,12 @@ package com.example.dayplanner.ui
 
 import android.app.Application
 import android.net.Uri
+import android.util.Base64
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.dayplanner.background.AutoBackup
 import com.example.dayplanner.background.DailyNotifications
+import com.example.dayplanner.data.BackupCrypto
 import com.example.dayplanner.data.BackupManager
 import com.example.dayplanner.data.DayData
 import com.example.dayplanner.data.DayRepository
@@ -33,6 +35,8 @@ import java.time.temporal.ChronoUnit
 /** So viele Tage im Voraus wird die Vorlage der "täglichen Fragen" eingetragen. */
 private const val DAILY_WINDOW_DAYS = 365L
 
+enum class ImportResult { OK, NEED_PASSWORD, WRONG_PASSWORD, FAILED }
+
 class PlannerViewModel(app: Application) : AndroidViewModel(app) {
     private val settingsRepo = SettingsRepository(app)
     private val dayRepo = DayRepository(app)
@@ -49,10 +53,16 @@ class PlannerViewModel(app: Application) : AndroidViewModel(app) {
     private val _day = MutableStateFlow<DayState?>(null)
     val day: StateFlow<DayState?> = _day
 
+    private val _customDesigns = MutableStateFlow<List<CustomEntry>>(emptyList())
+    val customDesigns: StateFlow<List<CustomEntry>> = _customDesigns
+
     private var currentDate: LocalDate = LocalDate.now()
 
     init {
         selectDate(currentDate)
+        viewModelScope.launch {
+            _customDesigns.value = withContext(Dispatchers.IO) { CustomDesigns.list(getApplication<Application>()) }
+        }
         viewModelScope.launch {
             applySchedules()
             ensureDailyWindow()
@@ -197,6 +207,19 @@ class PlannerViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    // ---------- Importierte Designs ----------
+
+    fun importDesign(uri: Uri, onResult: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            val app = getApplication<Application>()
+            val entry = CustomDesigns.import(app, uri)
+            if (entry != null) {
+                _customDesigns.value = withContext(Dispatchers.IO) { CustomDesigns.list(app) }
+            }
+            onResult(entry != null)
+        }
+    }
+
     // ---------- Zeitschloss / Tagesschloss ----------
 
     private fun lockUntil(target: Long) = updateSettings { s ->
@@ -251,27 +274,45 @@ class PlannerViewModel(app: Application) : AndroidViewModel(app) {
     fun exportBackup(uri: Uri, onResult: (Boolean) -> Unit) {
         viewModelScope.launch {
             val ok = runCatching {
-                val root = BackupManager.build(getApplication<Application>())
+                val app = getApplication<Application>()
+                val text = BackupManager.serialize(app, BackupManager.build(app))
                 withContext(Dispatchers.IO) {
-                    getApplication<Application>().contentResolver.openOutputStream(uri, "wt")!!
-                        .use { it.write(root.toString().toByteArray(Charsets.UTF_8)) }
+                    app.contentResolver.openOutputStream(uri, "wt")!!
+                        .use { it.write(text.toByteArray(Charsets.UTF_8)) }
                 }
             }.isSuccess
             onResult(ok)
         }
     }
 
-    fun importBackup(uri: Uri, onResult: (Boolean) -> Unit) {
+    /**
+     * Importiert ein Backup. Ist es verschlüsselt und kein Passwort angegeben, kommt NEED_PASSWORD
+     * zurück. Dann ruft die Oberfläche die Funktion mit dem eingegebenen Passwort erneut auf.
+     */
+    fun importBackup(uri: Uri, password: String?, onResult: (ImportResult) -> Unit) {
         // Während einer Zeit-/Tagessperre ist der Import gesperrt.
         if ((settings.value?.lockUntil ?: 0L) > System.currentTimeMillis()) {
-            onResult(false)
+            onResult(ImportResult.FAILED)
             return
         }
         viewModelScope.launch {
-            val ok = runCatching {
-                val text = withContext(Dispatchers.IO) {
+            val result = try {
+                val raw = withContext(Dispatchers.IO) {
                     getApplication<Application>().contentResolver.openInputStream(uri)!!
                         .use { it.readBytes().toString(Charsets.UTF_8) }
+                }
+                var text = raw
+                if (BackupCrypto.isEncrypted(raw)) {
+                    if (password == null) {
+                        onResult(ImportResult.NEED_PASSWORD)
+                        return@launch
+                    }
+                    val plain = withContext(Dispatchers.Default) { BackupCrypto.decrypt(raw, password) }
+                    if (plain == null) {
+                        onResult(ImportResult.WRONG_PASSWORD)
+                        return@launch
+                    }
+                    text = plain
                 }
                 val root = JSONObject(text)
                 require(root.optString("app") == "dayplanner")
@@ -282,8 +323,11 @@ class PlannerViewModel(app: Application) : AndroidViewModel(app) {
                 selectDate(currentDate)
                 applySchedules()
                 refreshWidgets()
-            }.isSuccess
-            onResult(ok)
+                ImportResult.OK
+            } catch (e: Exception) {
+                ImportResult.FAILED
+            }
+            onResult(result)
         }
     }
 
@@ -304,6 +348,24 @@ class PlannerViewModel(app: Application) : AndroidViewModel(app) {
             applySchedules()
         }
     }
+
+    // ---------- Backup-Passwort ----------
+
+    fun setBackupPassword(password: String, onDone: () -> Unit) {
+        viewModelScope.launch {
+            val salt = BackupCrypto.newSalt()
+            val key = withContext(Dispatchers.Default) { BackupCrypto.deriveKey(password, salt) }
+            settingsRepo.update {
+                it.copy(
+                    backupSalt = Base64.encodeToString(salt, Base64.NO_WRAP),
+                    backupKey = Base64.encodeToString(key, Base64.NO_WRAP),
+                )
+            }
+            onDone()
+        }
+    }
+
+    fun clearBackupPassword() = updateSettings { it.copy(backupSalt = "", backupKey = "") }
 
     // ---------- Export und Teilen ----------
 
