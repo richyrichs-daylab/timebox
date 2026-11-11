@@ -17,9 +17,11 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import com.example.dayplanner.data.Design
 import com.example.dayplanner.data.PasswordInfo
 import com.example.dayplanner.ui.LockScreen
@@ -28,6 +30,7 @@ import com.example.dayplanner.ui.PlannerViewModel
 import com.example.dayplanner.ui.SettingsScreen
 import com.example.dayplanner.ui.SkinTheme
 import com.example.dayplanner.ui.resolveSkin
+import com.example.dayplanner.ui.resolveSkinFor
 
 class MainActivity : ComponentActivity() {
     private val vm: PlannerViewModel by viewModels()
@@ -72,10 +75,14 @@ private fun PlannerRoot(vm: PlannerViewModel, settingsRequest: Int) {
     val settings by vm.settings.collectAsState()
     val password by vm.password.collectAsState()
     val unlocked by vm.unlocked.collectAsState()
+    val context = LocalContext.current
+    val dark = isSystemInDarkTheme()
 
     val s = settings
     val pw = password
-    val skin = resolveSkin(s?.designId ?: Design.STANDARD, s?.themeMode ?: 0, isSystemInDarkTheme())
+    val skin = remember(s?.customDesign, s?.design, s?.themeMode, dark) {
+        if (s == null) resolveSkin(Design.STANDARD, 0, dark) else resolveSkinFor(context, s, dark)
+    }
 
     SkinTheme(skin) {
         when {
