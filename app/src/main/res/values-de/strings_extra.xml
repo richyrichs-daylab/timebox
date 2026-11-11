@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="backup_pw">Backup-Passwort setzen</string>
+    <string name="backup_pw_on">Backup-Passwort gesetzt</string>
+    <string name="backup_pw_off">Backup-Passwort entfernt</string>
+    <string name="backup_pw_enter">Backup-Passwort</string>
+    <string name="backup_pw_wrong">Falsches Backup-Passwort</string>
+    <string name="design_import_ok">Design importiert</string>
+    <string name="design_import_failed">Ungültige Design-Datei</string>
+    <string name="cd_import_design">Design importieren</string>
+</resources>
