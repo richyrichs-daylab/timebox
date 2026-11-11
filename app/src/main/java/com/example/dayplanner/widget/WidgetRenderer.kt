@@ -25,8 +25,9 @@ import com.example.dayplanner.data.Settings
 import com.example.dayplanner.data.SettingsRepository
 import com.example.dayplanner.ui.Skin
 import com.example.dayplanner.ui.formatDate
-import com.example.dayplanner.ui.resolveSkin
+import com.example.dayplanner.ui.resolveSkinFor
 import java.time.LocalDate
+import java.time.ZoneId
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.max
@@ -37,6 +38,22 @@ import kotlin.math.sqrt
 
 class WidgetSnapshot(val settings: Settings, val day: DayData, val date: LocalDate)
 
+/** Art einer antippbaren Fläche im Widget. */
+object HitType {
+    const val PRIO = 0
+    const val TIME = 1
+    const val BRAIN = 2
+    const val PREV = 3
+    const val NEXT = 4
+    const val GEAR = 5
+    const val LOCK = 6
+}
+
+/** Antippbare Fläche in dp (links, oben, rechts, unten) relativ zum Widget. */
+class Hit(val l: Float, val t: Float, val r: Float, val b: Float, val type: Int, val key: Int)
+
+class WidgetImage(val bitmap: Bitmap, val hits: List<Hit>)
+
 object WidgetRenderer {
 
     suspend fun snapshot(context: Context): WidgetSnapshot {
@@ -45,8 +62,8 @@ object WidgetRenderer {
         return WidgetSnapshot(SettingsRepository(app).current(), DayRepository(app).load(date), date)
     }
 
-    /** Zeichnet das Widget im App-Design. Alle Maße sind in dp, die Canvas wird skaliert. */
-    fun render(ctx: Context, kind: WidgetKind, wDp: Float, hDp: Float, snap: WidgetSnapshot): Bitmap {
+    /** Zeichnet das Widget im gewählten Design. Alle Maße sind in dp, die Canvas wird skaliert. */
+    fun render(ctx: Context, kind: WidgetKind, wDp: Float, hDp: Float, snap: WidgetSnapshot): WidgetImage {
         val dm = ctx.resources.displayMetrics
         var density = dm.density
         val maxPx = dm.widthPixels.toFloat() * dm.heightPixels
@@ -61,9 +78,10 @@ object WidgetRenderer {
         val canvas = Canvas(bitmap)
         canvas.scale(density, density)
 
-        val skin = resolveSkin(snap.settings.designId, snap.settings.themeMode, isNight(ctx))
-        Painter(ctx, skin, snap, canvas, wDp, hDp).draw(kind)
-        return bitmap
+        val hits = ArrayList<Hit>()
+        val skin = resolveSkinFor(ctx, snap.settings, isNight(ctx))
+        Painter(ctx, skin, snap, canvas, wDp, hDp, live = true, hits = hits).draw(kind)
+        return WidgetImage(bitmap, hits)
     }
 
     /**
@@ -83,14 +101,28 @@ object WidgetRenderer {
         val bitmap = Bitmap.createBitmap(pxWidth, max(1, (hDp * scale).roundToInt()), Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
         canvas.scale(scale, scale)
-        val skin = resolveSkin(settings.designId, settings.themeMode, isNight(ctx))
-        Painter(ctx, skin, WidgetSnapshot(settings, data, date), canvas, wDp, hDp).drawExport()
+        val skin = resolveSkinFor(ctx, settings, isNight(ctx))
+        Painter(ctx, skin, WidgetSnapshot(settings, data, date), canvas, wDp, hDp, live = false, hits = null)
+            .drawExport()
         return bitmap
     }
 
     private fun isNight(ctx: Context): Boolean =
         (ctx.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) ==
             Configuration.UI_MODE_NIGHT_YES
+}
+
+/** -1 = vergangen, 0 = aktuelle Stunde, 1 = kommend. */
+private fun rowState(date: LocalDate, dayStart: Int, i: Int, nowMillis: Long): Int {
+    val zone = ZoneId.systemDefault()
+    val base = date.atTime(dayStart, 0)
+    val start = base.plusHours(i.toLong()).atZone(zone).toInstant().toEpochMilli()
+    val end = base.plusHours(i + 1L).atZone(zone).toInstant().toEpochMilli()
+    return when {
+        nowMillis >= end -> -1
+        nowMillis >= start -> 0
+        else -> 1
+    }
 }
 
 private class Painter(
@@ -100,6 +132,8 @@ private class Painter(
     private val c: Canvas,
     private val w: Float,
     private val h: Float,
+    private val live: Boolean,
+    private val hits: MutableList<Hit>?,
 ) {
     private val s = snap.settings
     private val regular: Typeface = ctx.resources.getFont(R.font.inter_regular)
@@ -109,6 +143,7 @@ private class Painter(
     private val fw = skin.frameWidth.value
     private val lw = skin.lineWidth.value
     private val gap = 8f
+    private val nowMillis = System.currentTimeMillis()
 
     private val fillP = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
     private val strokeP = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE }
@@ -119,6 +154,10 @@ private class Painter(
     }
     private val fadeP = Paint().apply { xfermode = PorterDuffXfermode(PorterDuff.Mode.DST_IN) }
 
+    private fun addHit(r: RectF, type: Int, key: Int = 0) {
+        hits?.add(Hit(r.left, r.top, r.right, r.bottom, type, key))
+    }
+
     // ------------------------------------------------------------ Gesamtbild
 
     fun draw(kind: WidgetKind) {
@@ -127,7 +166,7 @@ private class Painter(
 
         val area = RectF(gap, gap, w - gap, h - gap)
         when (kind) {
-            WidgetKind.PRIOS -> prios(area, min(3, s.prioritiesFor(snap.date)))
+            WidgetKind.PRIOS -> prios(area, s.prioritiesFor(snap.date))
             WidgetKind.BRAINDUMP -> braindump(area)
             WidgetKind.TIMEBOX -> timebox(area)
             WidgetKind.PAGE -> page(0)
@@ -168,7 +207,7 @@ private class Painter(
 
         var y = left.top
         if (s.showPrioritiesTitle) {
-            title(ctx.getString(R.string.priorities), RectF(left.left, y, left.right, y + titleH))
+            title(ctx.getString(R.string.priorities), RectF(left.left, y, left.right, y + titleH), 0)
             y += titleH + gap
         }
         val count = s.prioritiesFor(snap.date)
@@ -177,14 +216,14 @@ private class Painter(
         y += prioH + gap
 
         if (s.showBraindumpTitle) {
-            title(ctx.getString(R.string.braindump), RectF(left.left, y, left.right, y + titleH))
+            title(ctx.getString(R.string.braindump), RectF(left.left, y, left.right, y + titleH), 1)
             y += titleH + gap
         }
         if (left.bottom - y > 2 * fw + 4f) braindump(RectF(left.left, y, left.right, left.bottom))
 
         var ry = right.top
         if (s.showTimeboxTitle) {
-            title(ctx.getString(R.string.timebox), RectF(right.left, ry, right.right, ry + titleH))
+            title(ctx.getString(R.string.timebox), RectF(right.left, ry, right.right, ry + titleH), 2)
             ry += titleH + gap
         }
         timebox(RectF(right.left, ry, right.right, right.bottom))
@@ -230,16 +269,70 @@ private class Painter(
                 puff(0.85f, 0.95f, w * 0.18f)
             }
             else -> {
-                fillP.color = skin.bg.toArgb()
-                c.drawRect(0f, 0f, w, h, fillP)
+                val g = skin.gradient
+                if (g != null) {
+                    fillP.shader = LinearGradient(
+                        0f, 0f, 0f, h,
+                        g.map { it.toArgb() }.toIntArray(),
+                        null,
+                        Shader.TileMode.CLAMP,
+                    )
+                    c.drawRect(0f, 0f, w, h, fillP)
+                    fillP.shader = null
+                } else {
+                    fillP.color = skin.bg.toArgb()
+                    c.drawRect(0f, 0f, w, h, fillP)
+                }
             }
         }
+        if (skin.sun) drawSun()
+        if (skin.clouds) drawSoftClouds()
+    }
+
+    private fun drawSun() {
+        val cx = w * 0.86f
+        val cy = h * 0.07f
+        val r = w * 0.075f
+        iconP.color = 0xFFFFE9A0.toInt()
+        iconP.strokeWidth = r * 0.28f
+        for (i in 0 until 9) {
+            val a = 2.0 * PI * i / 9
+            c.drawLine(
+                cx + (r * 1.25f * cos(a)).toFloat(), cy + (r * 1.25f * sin(a)).toFloat(),
+                cx + (r * 1.8f * cos(a)).toFloat(), cy + (r * 1.8f * sin(a)).toFloat(),
+                iconP,
+            )
+        }
+        fillP.color = 0xFFFFE27A.toInt()
+        c.drawCircle(cx, cy, r, fillP)
+    }
+
+    private fun drawSoftClouds() {
+        fillP.color = 0x8CFFFFFF.toInt()
+        fun puff(cx: Float, cy: Float, r: Float) {
+            c.drawCircle(w * cx, h * cy, r, fillP)
+            c.drawCircle(w * (cx - 0.09f), h * (cy + 0.012f), r * 0.8f, fillP)
+            c.drawCircle(w * (cx + 0.10f), h * (cy + 0.016f), r * 0.75f, fillP)
+            c.drawCircle(w * (cx + 0.02f), h * (cy - 0.018f), r * 0.6f, fillP)
+        }
+        puff(0.84f, 0.12f, w * 0.10f)
+        puff(0.10f, 0.40f, w * 0.12f)
+        puff(0.12f, 0.70f, w * 0.15f)
+        puff(0.88f, 0.64f, w * 0.14f)
+        puff(0.30f, 0.97f, w * 0.17f)
+        puff(0.84f, 0.97f, w * 0.15f)
     }
 
     // ------------------------------------------------------------ Bausteine
 
-    /** Füllung, Rahmen (innen), bei Neon mit Leuchten. Gibt die Innenfläche zurück. */
+    /** Schatten, Füllung, Rahmen (innen), bei Neon mit Leuchten. Gibt die Innenfläche zurück. */
     private fun frame(r: RectF, fill: Int, color: Int): RectF {
+        val shadow = skin.shadowColor
+        if (shadow != null && skin.shadowOffset.value > 0f) {
+            val o = skin.shadowOffset.value
+            fillP.color = shadow.toArgb()
+            c.drawRect(r.left + o, r.top + o, r.right + o, r.bottom + o, fillP)
+        }
         if (skin.glow) {
             strokeP.color = color
             strokeP.alpha = 71
@@ -277,11 +370,43 @@ private class Painter(
         c.drawText(text, r.centerX() - p.measureText(text) / 2f, r.centerY() - (fm.ascent + fm.descent) / 2f, p)
     }
 
-    private fun title(text: String, r: RectF) {
-        val up = skin.upperTitles
-        val p = textPaint(bold, if (up) 18f else 22f, skin.ink.toArgb())
-        if (up) p.letterSpacing = 0.5f / 18f
-        centerText(if (up) text.uppercase() else text, r, p)
+    /** Titel über den Feldern. index: 0 Prioritäten, 1 Braindump, 2 Timebox. */
+    private fun title(text: String, r: RectF, index: Int) {
+        val label = if (skin.upperTitles) text.uppercase() else text
+        val fill = (skin.titleFills.getOrNull(index) ?: skin.accent).toArgb()
+        val inkColor = (skin.titleInk ?: skin.ink).toArgb()
+
+        when (skin.titleStyle) {
+            // Wolken-Etikett: Kapsel mit weichem Schatten
+            1 -> {
+                val p = textPaint(bold, 18f, inkColor)
+                val pillW = p.measureText(label) + 36f
+                val pill = RectF(r.centerX() - pillW / 2f, r.top, r.centerX() + pillW / 2f, r.bottom)
+                val radius = r.height() / 2f
+                fillP.color = 0x26000000
+                c.drawRoundRect(RectF(pill.left, pill.top + 1.5f, pill.right, pill.bottom + 1.5f), radius, radius, fillP)
+                fillP.color = fill
+                c.drawRoundRect(pill, radius, radius, fillP)
+                centerText(label, pill, p)
+            }
+            // Bunter Reiter mit Schattenstreifen, reicht bis an den Rahmen darunter
+            2 -> {
+                val tabLeft = r.left + 12f
+                val tabWidth = 0.72f * (r.width() - 12f)
+                val tab = RectF(tabLeft, r.top, tabLeft + tabWidth, r.bottom)
+                fillP.color = skin.titleShadow?.toArgb() ?: 0x33000000
+                c.drawRect(tab.right, r.top + 6f, tab.right + 8f, r.bottom + 8f, fillP)
+                fillP.color = fill
+                c.drawRect(tab.left, tab.top, tab.right, tab.bottom + 8f, fillP)
+                centerText(label, tab, textPaint(bold, 18f, inkColor))
+            }
+            else -> {
+                val up = skin.upperTitles
+                val p = textPaint(bold, if (up) 18f else 22f, skin.ink.toArgb())
+                if (up) p.letterSpacing = 0.5f / 18f
+                centerText(label, r, p)
+            }
+        }
     }
 
     /** Zelltext: einzeilig mit nebeligem Ende oder (bei Textumbruch) mehrzeilig. */
@@ -328,13 +453,15 @@ private class Painter(
         for (i in 0 until n) {
             val top = inner.top + i * (ch + lw)
             if (i > 0) hLine(inner.left, inner.right, top - lw, skin.line.toArgb())
+            val cell = RectF(inner.left, top, inner.right, top + ch)
             cellText(
                 snap.day.priorities[i].orEmpty(),
-                RectF(inner.left, top, inner.right, top + ch),
+                cell,
                 skin.fieldInk.toArgb(),
                 min(15f, ch * 0.55f),
                 snap.day.strikeP.contains(i),
             )
+            addHit(cell, HitType.PRIO, i)
         }
     }
 
@@ -363,6 +490,7 @@ private class Painter(
             c.restoreToCount(l)
         }
         c.restore()
+        addHit(inner, HitType.BRAIN)
     }
 
     private fun drawStroke(st: InkStroke) {
@@ -401,6 +529,7 @@ private class Painter(
         val hourFont = (rowH * 0.55f).coerceIn(6f, 17f)
         val cellFont = min(15f, rowH * 0.6f)
         val hourW = 40f
+        val hl = skin.hourHighlight
 
         for (i in 0 until rows) {
             val top = inner.top + i * (rowH + lw)
@@ -408,8 +537,15 @@ private class Painter(
             val lineColor = skin.lineAt(i.toFloat() / rows).toArgb()
             if (i > 0) hLine(inner.left, inner.right, top - lw, lineColor)
 
+            // Ausgrauen und Hervorheben gelten nur für die Widgets, nicht für den Export.
+            val state = if (live) rowState(snap.date, s.dayStart, i, nowMillis) else 1
+            val gray = s.grayPast && state < 0
+            val highlight = s.highlightNow && state == 0
+            val rowRect = RectF(inner.left, top, inner.right, top + rowH)
+            val layer = if (gray) c.saveLayerAlpha(rowRect, 102) else -1
+
             val hr = RectF(inner.left, top, inner.left + hourW, top + rowH)
-            fillP.color = skin.hourFill.toArgb()
+            fillP.color = if (highlight && hl != null) hl.toArgb() else skin.hourFill.toArgb()
             c.drawRect(hr, fillP)
             centerText(hour.toString(), hr, textPaint(bold, hourFont, skin.hourInk.toArgb()))
 
@@ -428,8 +564,15 @@ private class Painter(
                     cellFont,
                     snap.day.strikeT.contains(key),
                 )
+                addHit(cr, HitType.TIME, key)
                 x += lw + cellW
             }
+
+            if (highlight && hl == null) {
+                fillP.color = skin.accent.copy(alpha = 0.22f).toArgb()
+                c.drawRect(rowRect, fillP)
+            }
+            if (layer >= 0) c.restoreToCount(layer)
         }
     }
 
@@ -441,11 +584,15 @@ private class Painter(
 
         var x = r.left
         if (s.showLeftArrow) {
-            chevron(RectF(x, r.top, x + slot, r.bottom), true, ink)
+            val sr = RectF(x, r.top, x + slot, r.bottom)
+            chevron(sr, true, ink)
+            addHit(sr, HitType.PREV)
             x += slot
         }
         if (withGear) {
-            gear(RectF(x, r.top, x + slot, r.bottom), ink)
+            val sr = RectF(x, r.top, x + slot, r.bottom)
+            gear(sr, ink)
+            addHit(sr, HitType.GEAR)
             x += slot
         }
         val sideLeft = x - r.left
@@ -453,10 +600,14 @@ private class Painter(
         var rx = r.right
         if (s.showLock) {
             rx -= slot
-            lock(RectF(rx, r.top, rx + slot, r.bottom), ink)
+            val sr = RectF(rx, r.top, rx + slot, r.bottom)
+            lock(sr, ink)
+            addHit(sr, HitType.LOCK)
         }
         rx -= slot
-        chevron(RectF(rx, r.top, rx + slot, r.bottom), false, ink)
+        val nextRect = RectF(rx, r.top, rx + slot, r.bottom)
+        chevron(nextRect, false, ink)
+        addHit(nextRect, HitType.NEXT)
         val sideRight = r.right - rx
 
         // Datum immer mittig: links und rechts gleich viel Platz
