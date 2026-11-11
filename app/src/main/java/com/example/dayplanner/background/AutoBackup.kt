@@ -55,13 +55,14 @@ object AutoBackup {
         return if (isDue(s, LocalDate.now())) runNow(app) else false
     }
 
+    /** Schreibt das Backup nach Download/Timebox, mit Backup-Passwort verschlüsselt, falls gesetzt. */
     suspend fun runNow(context: Context): Boolean = withContext(Dispatchers.IO) {
         try {
             val app = context.applicationContext
             val today = LocalDate.now()
-            val json = BackupManager.build(app)
+            val text = BackupManager.serialize(app, BackupManager.build(app))
             val ok = Downloads.save(app, "timebox-backup-$today.json", "application/json", "Timebox") { out ->
-                out.write(json.toString().toByteArray(Charsets.UTF_8))
+                out.write(text.toByteArray(Charsets.UTF_8))
             }
             if (ok) SettingsRepository(app).update { it.copy(lastBackup = today.toString()) }
             ok
