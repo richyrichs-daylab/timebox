@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Timebox</string>
+
+    <string name="priorities">Vipaumbele</string>
+    <string name="braindump">Mawazo huru</string>
+    <string name="timebox">Timebox</string>
+
+    <string name="settings">Mipangilio</string>
+    <string name="set_left_arrow">Mshale wa kushoto</string>
+    <string name="set_lock">Alama ya kufuli</string>
+    <string name="set_share">Alama ya kushiriki</string>
+    <string name="set_date_format">Muundo wa tarehe: %1$s</string>
+    <string name="set_rows">Safu mlalo</string>
+    <string name="set_columns">Safu wima</string>
+    <string name="set_day_start">Mwanzo wa siku</string>
+    <string name="set_mode">Hali: %1$s</string>
+    <string name="set_gray_past">Fifisha saa zilizopita</string>
+    <string name="set_priorities_count">Vipaumbele</string>
+    <string name="set_title_priorities">Kichwa: Vipaumbele</string>
+    <string name="set_title_braindump">Kichwa: Mawazo huru</string>
+    <string name="set_title_timebox">Kichwa: Timebox</string>
+    <string name="set_wrap">Kukunja maandishi</string>
+    <string name="set_zoom">Kukuza</string>
+    <string name="set_drawing">Hali ya kuchora</string>
+    <string name="set_highlight_now">Angazia saa ya sasa</string>
+    <string name="set_strike">Futa kwa mstari kwa kugusa mara mbili</string>
+
+    <string name="mode_system">Chaguo-msingi</string>
+    <string name="mode_light">Nyepesi</string>
+    <string name="mode_dark">Nyeusi</string>
+
+    <string name="section_notifications">Arifa</string>
+    <string name="notif_plan">Ratiba ya siku kwa saa</string>
+    <string name="notif_prios">Vipaumbele vya siku</string>
+    <string name="notif_both">Vipaumbele + ratiba ya siku</string>
+    <string name="notif_channel">Muhtasari wa kila siku</string>
+
+    <string name="lock_time">Kufuli ya muda</string>
+    <string name="lock_day">Kufuli ya siku</string>
+    <string name="set_allow_release">Ruhusu kufungua</string>
+    <string name="lock_until">Imefungwa hadi %1$s</string>
+    <string name="lock_hours">Saa</string>
+    <string name="lock_minutes">Dakika</string>
+
+    <string name="set_daily">Maswali ya kila siku</string>
+    <string name="export_pdf">Hamisha kama PDF</string>
+    <string name="export_png">Hamisha kama PNG</string>
+    <string name="export_ok">Imehifadhiwa kwenye Vipakuliwa</string>
+    <string name="backup_export">Hamisha nakala rudufu</string>
+    <string name="backup_import">Leta nakala rudufu</string>
+    <string name="backup_auto">Otomatisha nakala rudufu</string>
+    <string name="backup_export_ok">Nakala rudufu imehamishwa</string>
+    <string name="backup_import_ok">Nakala rudufu imeletwa</string>
+    <string name="backup_auto_on">Nakala rudufu otomatiki imewashwa</string>
+    <string name="backup_auto_off">Nakala rudufu otomatiki imezimwa</string>
+    <string name="backup_failed">Hitilafu imetokea</string>
+    <string name="backup_pw">Weka nenosiri la nakala rudufu</string>
+    <string name="backup_pw_on">Nenosiri la nakala rudufu limewekwa</string>
+    <string name="backup_pw_off">Nenosiri la nakala rudufu limeondolewa</string>
+    <string name="backup_pw_enter">Nenosiri la nakala rudufu</string>
+    <string name="backup_pw_wrong">Nenosiri la nakala rudufu si sahihi</string>
+
+    <string name="unit_daily">Kila siku</string>
+    <string name="unit_weekly">Kila wiki</string>
+    <string name="unit_monthly">Kila mwezi</string>
+    <string name="unit_yearly">Kila mwaka</string>
+
+    <string name="dlg_cancel">Ghairi</string>
+    <string name="dlg_start">Anza</string>
+    <string name="dlg_export">Hamisha</string>
+    <string name="dlg_confirm">Thibitisha</string>
+    <string name="dlg_disable">Zima</string>
+
+    <string name="pw_numeric">Unda nenosiri la nambari</string>
+    <string name="pw_text">Unda nenosiri la herufi</string>
+    <string name="pw_delete">Futa nenosiri</string>
+    <string name="pw_cancel">Ghairi</string>
+    <string name="pw_confirm">Thibitisha</string>
+    <string name="pw_hint_min">Angalau herufi 4</string>
+    <string name="pw_wrong">Nenosiri si sahihi</string>
+
+    <string name="cal_from">+ kutoka kalenda</string>
+    <string name="cal_to">+ kwenda kalenda</string>
+    <string name="cal_none">Hakuna matukio siku hii</string>
+    <string name="cal_empty">Andika maandishi kwanza</string>
+    <string name="cal_denied">Ufikiaji wa kalenda umekataliwa</string>
+    <string name="cal_no_app">Programu ya kalenda haijapatikana</string>
+
+    <string name="btn_donate">❤️ Msaidie msanidi 👍</string>
+    <string name="btn_designs">+ miundo zaidi ya kipekee +</string>
+    <string name="design_import_ok">Muundo umeletwa</string>
+    <string name="design_import_failed">Faili ya muundo si sahihi</string>
+
+    <string name="cd_prev">Siku iliyopita</string>
+    <string name="cd_next">Siku inayofuata</string>
+    <string name="cd_settings">Mipangilio</string>
+    <string name="cd_lock">Hali ya kufunga</string>
+    <string name="cd_share">Shiriki</string>
+    <string name="cd_reset">Fungua</string>
+    <string name="cd_date">Chagua tarehe</string>
+    <string name="cd_back">Rudi</string>
+    <string name="cd_pen">Kalamu</string>
+    <string name="cd_eraser">Kifutio</string>
+    <string name="cd_undo">Tendua</string>
+    <string name="cd_import_design">Leta muundo</string>
+
+    <string name="widget_prios">Vipaumbele</string>
+    <string name="widget_braindump">Mawazo huru</string>
+    <string name="widget_timebox">Timebox</string>
+    <string name="widget_page">Ukurasa</string>
+    <string name="widget_page_nogear">Ukurasa bila gia</string>
+</resources>
