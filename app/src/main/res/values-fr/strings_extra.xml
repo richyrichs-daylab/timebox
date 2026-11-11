@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="backup_pw">Définir le mot de passe de sauvegarde</string>
+    <string name="backup_pw_on">Mot de passe de sauvegarde défini</string>
+    <string name="backup_pw_off">Mot de passe de sauvegarde supprimé</string>
+    <string name="backup_pw_enter">Mot de passe de sauvegarde</string>
+    <string name="backup_pw_wrong">Mot de passe de sauvegarde incorrect</string>
+    <string name="design_import_ok">Design importé</string>
+    <string name="design_import_failed">Fichier de design non valide</string>
+    <string name="cd_import_design">Importer un design</string>
+</resources>
