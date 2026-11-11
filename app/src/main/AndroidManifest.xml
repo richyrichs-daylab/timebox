@@ -26,6 +26,19 @@
             </intent-filter>
         </activity>
 
+        <activity
+            android:name=".widget.WidgetEditActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:launchMode="singleTop"
+            android:taskAffinity=""
+            android:theme="@style/Theme.DayPlanner.Popup"
+            android:windowSoftInputMode="adjustResize" />
+
+        <receiver
+            android:name=".widget.WidgetActionReceiver"
+            android:exported="false" />
+
         <receiver
             android:name=".background.NotifyReceiver"
             android:exported="false" />
