@@ -22,6 +22,7 @@ data class Settings(
     val wrapText: Boolean = false,
     val locked: Boolean = false,
     val design: Int = 0,                  // Index in Design
+    val customDesign: String = "",        // ID eines importierten Designs, leer = eingebautes Design
     val themeMode: Int = 0,               // 0 Standard, 1 hell, 2 dunkel
     val zoom: Boolean = false,
     val drawing: Boolean = true,
@@ -41,6 +42,8 @@ data class Settings(
     val lastBackup: String = "",          // ISO-Datum
     val dailyBraindump: String = "",      // Vorlage "tägliche Fragen"
     val dailyFilledUntil: String = "",    // ISO-Datum, bis wohin die Vorlage eingetragen ist
+    val backupSalt: String = "",          // Backup-Passwort: Salz (Base64), nur auf dem Gerät
+    val backupKey: String = "",           // Backup-Passwort: abgeleiteter Schlüssel (Base64), nur auf dem Gerät
 ) {
     /** Lock-in-Modus: manuell (Schloss-Symbol) oder durch eine laufende Zeit-/Tagessperre. */
     fun lockActiveAt(now: Long): Boolean = (locked && showLock) || lockUntil > now
