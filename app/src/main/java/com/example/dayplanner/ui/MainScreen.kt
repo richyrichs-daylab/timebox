@@ -35,6 +35,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.Text
@@ -51,9 +52,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
@@ -341,6 +346,9 @@ private fun Content(
         val scrollable = contentPx > availPx
         val contentDp = with(density) { contentPx.toDp() }
 
+        // Platz für den Schlagschatten (rechts und unten), damit er nicht abgeschnitten wird.
+        val shadowPx = with(density) { skin.shadowOffset.roundToPx() }
+
         val rowEstimate = (contentDp - titleBlock - skin.frameWidth * 2 - skin.lineWidth * (rows - 1)) / rows
         val hourFont = (rowEstimate.value * 0.55f).coerceIn(9f, 17f).sp
 
@@ -364,7 +372,9 @@ private fun Content(
                     Modifier
                         .fillMaxWidth()
                         .layout { measurable, c ->
-                            val placeable = measurable.measure(Constraints.fixed(c.maxWidth, contentPx))
+                            val w = (c.maxWidth - shadowPx).coerceAtLeast(0)
+                            val h = (contentPx - shadowPx).coerceAtLeast(0)
+                            val placeable = measurable.measure(Constraints.fixed(w, h))
                             layout(c.maxWidth, contentPx) { placeable.placeRelative(0, 0) }
                         },
                     horizontalArrangement = Arrangement.spacedBy(gap),
@@ -376,9 +386,9 @@ private fun Content(
                             .fillMaxHeight(),
                         verticalArrangement = Arrangement.spacedBy(gap),
                     ) {
-                        if (s.showPrioritiesTitle) SectionTitle(stringResource(R.string.priorities))
+                        if (s.showPrioritiesTitle) SectionTitle(stringResource(R.string.priorities), 0)
                         PrioritiesBox(s.prioritiesFor(d.date), d, s, lockActive, vm, prioMax, onActive)
-                        if (s.showBraindumpTitle) SectionTitle(stringResource(R.string.braindump))
+                        if (s.showBraindumpTitle) SectionTitle(stringResource(R.string.braindump), 1)
                         BlockField(
                             text = d.data.braindump,
                             strokes = d.data.strokes,
@@ -402,7 +412,7 @@ private fun Content(
                             .fillMaxHeight(),
                         verticalArrangement = Arrangement.spacedBy(gap),
                     ) {
-                        if (s.showTimeboxTitle) SectionTitle(stringResource(R.string.timebox))
+                        if (s.showTimeboxTitle) SectionTitle(stringResource(R.string.timebox), 2)
                         Timebox(
                             s = s,
                             day = d,
@@ -521,23 +531,79 @@ private fun AutoSizeText(text: String, color: Color, modifier: Modifier) {
     }
 }
 
+/** Titel über den Feldern. index: 0 Prioritäten, 1 Braindump, 2 Timebox. */
 @Composable
-private fun SectionTitle(text: String) {
+private fun SectionTitle(text: String, index: Int) {
     val skin = LocalSkin.current
-    Box(
-        Modifier
-            .fillMaxWidth()
-            .height(TitleHeight),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(
-            text = if (skin.upperTitles) text.uppercase() else text,
-            color = skin.ink,
-            fontWeight = FontWeight.Bold,
-            fontSize = if (skin.upperTitles) 18.sp else 22.sp,
-            letterSpacing = if (skin.upperTitles) 0.5.sp else 0.sp,
-            maxLines = 1,
-        )
+    val label = if (skin.upperTitles) text.uppercase() else text
+    val fill = skin.titleFills.getOrNull(index) ?: skin.accent
+    val inkColor = skin.titleInk ?: skin.ink
+
+    when (skin.titleStyle) {
+        // Wolken-Etikett: Kapsel mit weichem Schatten
+        1 -> Box(
+            Modifier
+                .fillMaxWidth()
+                .height(TitleHeight),
+            contentAlignment = Alignment.Center,
+        ) {
+            Box(
+                Modifier
+                    .height(TitleHeight)
+                    .shadow(2.dp, RoundedCornerShape(50), clip = false)
+                    .clip(RoundedCornerShape(50))
+                    .background(fill)
+                    .padding(horizontal = 18.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(label, color = inkColor, fontWeight = FontWeight.Bold, fontSize = 18.sp, maxLines = 1)
+            }
+        }
+        // Bunter Reiter mit Schattenstreifen, reicht bis an den Rahmen darunter
+        2 -> {
+            val strip = skin.titleShadow ?: Color(0x33000000)
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .height(TitleHeight)
+            ) {
+                Box(
+                    Modifier
+                        .padding(start = 12.dp)
+                        .fillMaxWidth(0.72f)
+                        .fillMaxHeight()
+                        .drawBehind {
+                            val reach = 8.dp.toPx()
+                            val stripWidth = 8.dp.toPx()
+                            val stripTop = 6.dp.toPx()
+                            drawRect(
+                                strip,
+                                Offset(size.width, stripTop),
+                                Size(stripWidth, size.height + reach - stripTop),
+                            )
+                            drawRect(fill, Offset.Zero, Size(size.width, size.height + reach))
+                        },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(label, color = inkColor, fontWeight = FontWeight.Bold, fontSize = 18.sp, maxLines = 1)
+                }
+            }
+        }
+        else -> Box(
+            Modifier
+                .fillMaxWidth()
+                .height(TitleHeight),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                text = label,
+                color = skin.ink,
+                fontWeight = FontWeight.Bold,
+                fontSize = if (skin.upperTitles) 18.sp else 22.sp,
+                letterSpacing = if (skin.upperTitles) 0.5.sp else 0.sp,
+                maxLines = 1,
+            )
+        }
     }
 }
 
@@ -632,12 +698,17 @@ private fun TimeRow(
     val gray = s.grayPast && state < 0
     val highlight = s.highlightNow && state == 0
 
+    // Hat das Design eine eigene Hervorhebung (z. B. pinke Stundenzelle), färbt sie nur die Stundenzelle.
+    val hl = skin.hourHighlight
+    val hourBg = if (highlight && hl != null) hl else skin.hourFill
+    val tintRow = highlight && hl == null
+
     Row(
         Modifier
             .fillMaxSize()
             .then(if (gray) Modifier.alpha(0.4f) else Modifier)
             .then(
-                if (highlight) {
+                if (tintRow) {
                     Modifier.drawWithContent {
                         drawContent()
                         drawRect(skin.accent.copy(alpha = 0.22f))
@@ -651,7 +722,7 @@ private fun TimeRow(
             Modifier
                 .width(40.dp)
                 .fillMaxHeight()
-                .background(skin.hourFill),
+                .background(hourBg),
             contentAlignment = Alignment.Center,
         ) {
             Text(
