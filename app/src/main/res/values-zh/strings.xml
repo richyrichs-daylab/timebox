@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Timebox</string>
+
+    <string name="priorities">优先事项</string>
+    <string name="braindump">随手记</string>
+    <string name="timebox">Timebox</string>
+
+    <string name="settings">设置</string>
+    <string name="set_left_arrow">左箭头</string>
+    <string name="set_lock">锁形图标</string>
+    <string name="set_share">分享图标</string>
+    <string name="set_date_format">日期格式：%1$s</string>
+    <string name="set_rows">行数</string>
+    <string name="set_columns">列数</string>
+    <string name="set_day_start">一天开始时间</string>
+    <string name="set_mode">模式：%1$s</string>
+    <string name="set_gray_past">淡化已过去的小时</string>
+    <string name="set_priorities_count">优先事项</string>
+    <string name="set_title_priorities">标题：优先事项</string>
+    <string name="set_title_braindump">标题：随手记</string>
+    <string name="set_title_timebox">标题：Timebox</string>
+    <string name="set_wrap">自动换行</string>
+    <string name="set_zoom">缩放</string>
+    <string name="set_drawing">绘图模式</string>
+    <string name="set_highlight_now">高亮当前小时</string>
+    <string name="set_strike">双击划线</string>
+
+    <string name="mode_system">默认</string>
+    <string name="mode_light">浅色</string>
+    <string name="mode_dark">深色</string>
+
+    <string name="section_notifications">通知</string>
+    <string name="notif_plan">按小时的日程</string>
+    <string name="notif_prios">今日优先事项</string>
+    <string name="notif_both">优先事项 + 日程</string>
+    <string name="notif_channel">每日概览</string>
+
+    <string name="lock_time">定时锁定</string>
+    <string name="lock_day">按天锁定</string>
+    <string name="set_allow_release">允许解锁</string>
+    <string name="lock_until">锁定至 %1$s</string>
+    <string name="lock_hours">小时</string>
+    <string name="lock_minutes">分钟</string>
+
+    <string name="set_daily">每日问题</string>
+    <string name="export_pdf">导出为 PDF</string>
+    <string name="export_png">导出为 PNG</string>
+    <string name="export_ok">已保存到“下载”</string>
+    <string name="backup_export">导出备份</string>
+    <string name="backup_import">导入备份</string>
+    <string name="backup_auto">自动备份</string>
+    <string name="backup_export_ok">备份已导出</string>
+    <string name="backup_import_ok">备份已导入</string>
+    <string name="backup_auto_on">自动备份已开启</string>
+    <string name="backup_auto_off">自动备份已关闭</string>
+    <string name="backup_failed">出错了</string>
+    <string name="backup_pw">设置备份密码</string>
+    <string name="backup_pw_on">备份密码已设置</string>
+    <string name="backup_pw_off">备份密码已移除</string>
+    <string name="backup_pw_enter">备份密码</string>
+    <string name="backup_pw_wrong">备份密码错误</string>
+
+    <string name="unit_daily">每天</string>
+    <string name="unit_weekly">每周</string>
+    <string name="unit_monthly">每月</string>
+    <string name="unit_yearly">每年</string>
+
+    <string name="dlg_cancel">取消</string>
+    <string name="dlg_start">开始</string>
+    <string name="dlg_export">导出</string>
+    <string name="dlg_confirm">确认</string>
+    <string name="dlg_disable">停用</string>
+
+    <string name="pw_numeric">创建数字密码</string>
+    <string name="pw_text">创建字符密码</string>
+    <string name="pw_delete">删除密码</string>
+    <string name="pw_cancel">取消</string>
+    <string name="pw_confirm">确认</string>
+    <string name="pw_hint_min">至少 4 个字符</string>
+    <string name="pw_wrong">密码错误</string>
+
+    <string name="cal_from">+ 从日历导入</string>
+    <string name="cal_to">+ 添加到日历</string>
+    <string name="cal_none">当天没有日程</string>
+    <string name="cal_empty">请先输入文字</string>
+    <string name="cal_denied">日历权限被拒绝</string>
+    <string name="cal_no_app">未找到日历应用</string>
+
+    <string name="btn_donate">❤️ 支持开发者 👍</string>
+    <string name="btn_designs">+ 更多个性化设计 +</string>
+    <string name="design_import_ok">设计已导入</string>
+    <string name="design_import_failed">无效的设计文件</string>
+
+    <string name="cd_prev">前一天</string>
+    <string name="cd_next">后一天</string>
+    <string name="cd_settings">设置</string>
+    <string name="cd_lock">锁定模式</string>
+    <string name="cd_share">分享</string>
+    <string name="cd_reset">解锁</string>
+    <string name="cd_date">选择日期</string>
+    <string name="cd_back">返回</string>
+    <string name="cd_pen">笔</string>
+    <string name="cd_eraser">橡皮擦</string>
+    <string name="cd_undo">撤销</string>
+    <string name="cd_import_design">导入设计</string>
+
+    <string name="widget_prios">优先事项</string>
+    <string name="widget_braindump">随手记</string>
+    <string name="widget_timebox">Timebox</string>
+    <string name="widget_page">整页</string>
+    <string name="widget_page_nogear">整页（无齿轮）</string>
+</resources>
