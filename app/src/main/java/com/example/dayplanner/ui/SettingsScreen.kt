@@ -2,6 +2,7 @@ package com.example.dayplanner.ui
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -85,6 +86,7 @@ private val GroupGap = 32.dp
 fun SettingsScreen(vm: PlannerViewModel, onBack: () -> Unit) {
     val current by vm.settings.collectAsState()
     val pwInfo by vm.password.collectAsState()
+    val customDesigns by vm.customDesigns.collectAsState()
     val s = current ?: return
     val skin = LocalSkin.current
     val ink = skin.ink
@@ -105,6 +107,8 @@ fun SettingsScreen(vm: PlannerViewModel, onBack: () -> Unit) {
     var showDayLock by remember { mutableStateOf(false) }
     var showAuto by remember { mutableStateOf(false) }
     var showDaily by remember { mutableStateOf(false) }
+    var showBackupPw by remember { mutableStateOf(false) }
+    var pendingImport by remember { mutableStateOf<Uri?>(null) }
 
     val preview = formatDate(LocalDate.now(), s.dateFormat)
     val modeName = stringResource(
@@ -114,7 +118,8 @@ fun SettingsScreen(vm: PlannerViewModel, onBack: () -> Unit) {
             else -> R.string.mode_system
         }
     )
-    val modeEnabled = s.designId.supportsMode()
+    // Importierte Designs legen ihre Farben selbst fest.
+    val modeEnabled = s.customDesign.isEmpty() && s.designId.supportsMode()
 
     fun toast(res: Int) = Toast.makeText(context, context.getString(res), Toast.LENGTH_SHORT).show()
 
@@ -133,7 +138,21 @@ fun SettingsScreen(vm: PlannerViewModel, onBack: () -> Unit) {
         ActivityResultContracts.OpenDocument()
     ) { uri ->
         if (uri != null) {
-            vm.importBackup(uri) { ok -> toast(if (ok) R.string.backup_import_ok else R.string.backup_failed) }
+            vm.importBackup(uri, null) { res ->
+                when (res) {
+                    ImportResult.OK -> toast(R.string.backup_import_ok)
+                    ImportResult.NEED_PASSWORD -> pendingImport = uri
+                    ImportResult.WRONG_PASSWORD -> toast(R.string.backup_pw_wrong)
+                    ImportResult.FAILED -> toast(R.string.backup_failed)
+                }
+            }
+        }
+    }
+    val designLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        if (uri != null) {
+            vm.importDesign(uri) { ok -> toast(if (ok) R.string.design_import_ok else R.string.design_import_failed) }
         }
     }
     val notifPermission = rememberLauncherForActivityResult(
@@ -354,16 +373,20 @@ fun SettingsScreen(vm: PlannerViewModel, onBack: () -> Unit) {
 
             Spacer(Modifier.height(GroupGap))
 
-            // ---------- Tägliche Fragen und Export ----------
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                WideButton(
-                    stringResource(R.string.set_daily),
-                    Modifier.fillMaxWidth(),
-                    enabled = !lockNow,
-                ) { showDaily = true }
-                WideButton(stringResource(R.string.export_pdf), Modifier.fillMaxWidth()) { showPdf = true }
-                WideButton(stringResource(R.string.export_png), Modifier.fillMaxWidth()) { showPng = true }
-            }
+            // ---------- Tägliche Fragen, PDF und PNG: jeweils eigene Gruppe ----------
+            WideButton(
+                stringResource(R.string.set_daily),
+                Modifier.fillMaxWidth(),
+                enabled = !lockNow,
+            ) { showDaily = true }
+
+            Spacer(Modifier.height(GroupGap))
+
+            WideButton(stringResource(R.string.export_pdf), Modifier.fillMaxWidth()) { showPdf = true }
+
+            Spacer(Modifier.height(GroupGap))
+
+            WideButton(stringResource(R.string.export_png), Modifier.fillMaxWidth()) { showPng = true }
 
             Spacer(Modifier.height(GroupGap))
 
@@ -380,6 +403,7 @@ fun SettingsScreen(vm: PlannerViewModel, onBack: () -> Unit) {
                     importLauncher.launch(arrayOf("*/*"))
                 }
                 WideButton(stringResource(R.string.backup_auto), Modifier.fillMaxWidth()) { showAuto = true }
+                WideButton(stringResource(R.string.backup_pw), Modifier.fillMaxWidth()) { showBackupPw = true }
             }
 
             Spacer(Modifier.height(GroupGap))
@@ -413,16 +437,47 @@ fun SettingsScreen(vm: PlannerViewModel, onBack: () -> Unit) {
 
             Spacer(Modifier.height(GroupGap))
 
-            // ---------- Layout-Designs, ohne Beschriftung ----------
+            // ---------- Eingebaute Layout-Designs, ohne Beschriftung ----------
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Design.entries.forEachIndexed { index, design ->
-                    DesignTile(
-                        design = design,
-                        selected = s.design == index,
-                        mode = s.themeMode,
-                        systemDark = systemDark,
+                    val tileSkin = remember(design, s.themeMode, systemDark) {
+                        resolveSkin(design, s.themeMode, systemDark)
+                    }
+                    SkinTile(
+                        sk = tileSkin,
+                        selected = s.customDesign.isEmpty() && s.design == index,
+                        description = design.name,
                         modifier = Modifier.weight(1f).aspectRatio(0.6f),
-                    ) { vm.updateSettings { it.copy(design = index) } }
+                    ) { vm.updateSettings { it.copy(design = index, customDesign = "") } }
+                }
+            }
+
+            Spacer(Modifier.height(8.dp))
+
+            // ---------- Zweite Reihe: Import-Feld (+) und importierte Designs ----------
+            val tileItems: List<CustomEntry?> = listOf<CustomEntry?>(null) + customDesigns
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                tileItems.chunked(6).forEach { chunk ->
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        chunk.forEach { entry ->
+                            if (entry == null) {
+                                ImportTile(Modifier.weight(1f).aspectRatio(0.6f)) {
+                                    designLauncher.launch(
+                                        arrayOf("application/json", "text/plain", "application/octet-stream", "*/*")
+                                    )
+                                }
+                            } else {
+                                SkinTile(
+                                    sk = entry.skin,
+                                    selected = s.customDesign == entry.id,
+                                    description = entry.name,
+                                    modifier = Modifier.weight(1f).aspectRatio(0.6f),
+                                ) { vm.updateSettings { it.copy(customDesign = entry.id) } }
+                            }
+                        }
+                        // Leere Plätze bleiben unsichtbar
+                        repeat(6 - chunk.size) { Spacer(Modifier.weight(1f)) }
+                    }
                 }
             }
 
@@ -449,6 +504,38 @@ fun SettingsScreen(vm: PlannerViewModel, onBack: () -> Unit) {
             onConfirm = { secret ->
                 vm.createPassword(type, secret)
                 pwDialog = null
+            },
+        )
+    }
+
+    if (showBackupPw) {
+        BackupPasswordDialog(
+            active = s.backupKey.isNotEmpty(),
+            onCancel = { showBackupPw = false },
+            onDisable = {
+                showBackupPw = false
+                vm.clearBackupPassword()
+                toast(R.string.backup_pw_off)
+            },
+            onConfirm = { password ->
+                showBackupPw = false
+                vm.setBackupPassword(password) { toast(R.string.backup_pw_on) }
+            },
+        )
+    }
+
+    pendingImport?.let { uri ->
+        BackupImportPasswordDialog(
+            onCancel = { pendingImport = null },
+            onConfirm = { password ->
+                pendingImport = null
+                vm.importBackup(uri, password) { res ->
+                    when (res) {
+                        ImportResult.OK -> toast(R.string.backup_import_ok)
+                        ImportResult.WRONG_PASSWORD -> toast(R.string.backup_pw_wrong)
+                        else -> toast(R.string.backup_failed)
+                    }
+                }
             },
         )
     }
@@ -624,17 +711,16 @@ private fun NumberBox(value: Int, range: IntRange, onValue: (Int) -> Unit) {
     )
 }
 
+/** Kachel mit Vorschau eines Designs (eingebaut oder importiert). */
 @Composable
-private fun DesignTile(
-    design: Design,
+private fun SkinTile(
+    sk: Skin,
     selected: Boolean,
-    mode: Int,
-    systemDark: Boolean,
+    description: String,
     modifier: Modifier,
     onClick: () -> Unit,
 ) {
     val current = LocalSkin.current
-    val sk = remember(design, mode, systemDark) { resolveSkin(design, mode, systemDark) }
     Box(
         modifier
             .border(
@@ -643,7 +729,7 @@ private fun DesignTile(
             )
             .padding(3.dp)
             .clipToBounds()
-            .semantics { contentDescription = design.name; role = Role.Button }
+            .semantics { contentDescription = description; role = Role.Button }
             .tapOrHold(onClick)
     ) {
         SkinBackground(sk, Modifier.fillMaxSize(), unit = 10.dp)
@@ -665,6 +751,27 @@ private fun DesignTile(
             box(m, top, colW, h * 0.16f, sk.prioFill)
             box(m, top + h * 0.16f + g, colW, h - top - h * 0.16f - g - m, sk.brainFill)
             box(m + colW + g, top, colW, h - top - m, sk.timeFill)
+        }
+    }
+}
+
+/** Hellgraues leeres Feld mit deutlichem Plus: öffnet die Dateiauswahl für gekaufte Designs. */
+@Composable
+private fun ImportTile(modifier: Modifier, onClick: () -> Unit) {
+    val ink = LocalSkin.current.ink
+    val description = stringResource(R.string.cd_import_design)
+    Box(
+        modifier
+            .background(Color(0xFF9E9E9E).copy(alpha = 0.3f))
+            .border(2.dp, ink)
+            .semantics { contentDescription = description; role = Role.Button }
+            .tapOrHold(onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Canvas(Modifier.size(22.dp)) {
+            val sw = 4.dp.toPx()
+            drawLine(ink, Offset(0f, size.height / 2f), Offset(size.width, size.height / 2f), strokeWidth = sw)
+            drawLine(ink, Offset(size.width / 2f, 0f), Offset(size.width / 2f, size.height), strokeWidth = sw)
         }
     }
 }
