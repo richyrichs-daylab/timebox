@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="backup_pw">Задать пароль резервной копии</string>
+    <string name="backup_pw_on">Пароль резервной копии задан</string>
+    <string name="backup_pw_off">Пароль резервной копии удалён</string>
+    <string name="backup_pw_enter">Пароль резервной копии</string>
+    <string name="backup_pw_wrong">Неверный пароль резервной копии</string>
+    <string name="design_import_ok">Дизайн импортирован</string>
+    <string name="design_import_failed">Недопустимый файл дизайна</string>
+    <string name="cd_import_design">Импортировать дизайн</string>
+</resources>
