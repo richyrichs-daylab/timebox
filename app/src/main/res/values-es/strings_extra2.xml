@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="section_widgets">Widgets</string>
+    <string name="widget_set_prios">Prioridades mostradas</string>
+    <string name="widget_set_empty">¿Mostrar también\ncampos vacíos?</string>
+    <string name="answer_yes">sí</string>
+    <string name="answer_no">no</string>
+    <string name="wallpaper_set">Establecer fondo animado</string>
+    <string name="wallpaper_label">Día de Timebox</string>
+    <string name="wallpaper_description">Muestra tu día actual como fondo animado.</string>
+    <string name="keep_title">¿Cuántas copias conservar?</string>
+    <string name="keep_all">todas</string>
+</resources>
