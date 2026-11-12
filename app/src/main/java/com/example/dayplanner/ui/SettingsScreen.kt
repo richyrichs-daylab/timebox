@@ -1,6 +1,9 @@
 package com.example.dayplanner.ui
 
 import android.Manifest
+import android.app.WallpaperManager
+import android.content.ComponentName
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
@@ -67,12 +70,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import com.example.dayplanner.R
 import com.example.dayplanner.data.Design
 import com.example.dayplanner.data.PasswordInfo
+import com.example.dayplanner.wallpaper.TimeboxWallpaperService
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -118,13 +123,32 @@ fun SettingsScreen(vm: PlannerViewModel, onBack: () -> Unit) {
             else -> R.string.mode_system
         }
     )
-    // Importierte Designs legen ihre Farben selbst fest.
-    val modeEnabled = s.customDesign.isEmpty() && s.designId.supportsMode()
+
+    // Ist ein importiertes Design gewählt, aber seine Datei fehlt, gilt das Standarddesign.
+    val customActive = s.customDesign.isNotEmpty() && customDesigns.any { it.id == s.customDesign }
+    val effectiveBuiltIn = if (s.customDesign.isNotEmpty()) Design.STANDARD else s.designId
+    val modeEnabled = !customActive && effectiveBuiltIn.supportsMode()
 
     fun toast(res: Int) = Toast.makeText(context, context.getString(res), Toast.LENGTH_SHORT).show()
 
     fun openLink(url: String) {
         runCatching { uriHandler.openUri(url) }
+    }
+
+    /** Öffnet die Systemauswahl für den Live-Hintergrund, direkt mit Timebox vorgewählt. */
+    fun setLiveWallpaper() {
+        val component = ComponentName(context, TimeboxWallpaperService::class.java)
+        val direct = Intent(WallpaperManager.ACTION_CHANGE_LIVE_WALLPAPER)
+            .putExtra(WallpaperManager.EXTRA_LIVE_WALLPAPER_COMPONENT, component)
+        try {
+            context.startActivity(direct)
+        } catch (e: Exception) {
+            try {
+                context.startActivity(Intent(WallpaperManager.ACTION_LIVE_WALLPAPER_CHOOSER))
+            } catch (e2: Exception) {
+                toast(R.string.backup_failed)
+            }
+        }
     }
 
     val exportLauncher = rememberLauncherForActivityResult(
@@ -308,6 +332,36 @@ fun SettingsScreen(vm: PlannerViewModel, onBack: () -> Unit) {
 
             Spacer(Modifier.height(GroupGap))
 
+            // ---------- Widgets ----------
+            Text(
+                stringResource(R.string.section_widgets),
+                color = ink,
+                fontWeight = FontWeight.ExtraBold,
+                fontSize = 18.sp,
+            )
+            Spacer(Modifier.height(12.dp))
+            Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                // Höchstens so viele wie oben eingestellt. Steht das Feld auf dem Maximum,
+                // wächst es mit, wenn oben die Prioritäten erhöht werden.
+                SettingRow(stringResource(R.string.widget_set_prios)) {
+                    NumberBox(s.widgetPriosEffective, 1..s.priorities) { v ->
+                        vm.updateSettings { it.copy(widgetPrios = if (v >= it.priorities) 0 else v) }
+                    }
+                }
+                SettingRow(stringResource(R.string.widget_set_empty)) {
+                    SquareButton(
+                        text = stringResource(if (s.widgetShowEmpty) R.string.answer_yes else R.string.answer_no),
+                        fontSize = 14.sp,
+                    ) { vm.updateSettings { it.copy(widgetShowEmpty = !it.widgetShowEmpty) } }
+                }
+            }
+
+            Spacer(Modifier.height(GroupGap))
+
+            WideButton(stringResource(R.string.wallpaper_set), Modifier.fillMaxWidth()) { setLiveWallpaper() }
+
+            Spacer(Modifier.height(GroupGap))
+
             // ---------- Benachrichtigungen ----------
             Text(
                 stringResource(R.string.section_notifications),
@@ -373,7 +427,7 @@ fun SettingsScreen(vm: PlannerViewModel, onBack: () -> Unit) {
 
             Spacer(Modifier.height(GroupGap))
 
-            // ---------- Tägliche Fragen, PDF und PNG: jeweils eigene Gruppe ----------
+            // ---------- Tägliche Fragen: eigene Gruppe ----------
             WideButton(
                 stringResource(R.string.set_daily),
                 Modifier.fillMaxWidth(),
@@ -382,11 +436,11 @@ fun SettingsScreen(vm: PlannerViewModel, onBack: () -> Unit) {
 
             Spacer(Modifier.height(GroupGap))
 
-            WideButton(stringResource(R.string.export_pdf), Modifier.fillMaxWidth()) { showPdf = true }
-
-            Spacer(Modifier.height(GroupGap))
-
-            WideButton(stringResource(R.string.export_png), Modifier.fillMaxWidth()) { showPng = true }
+            // ---------- PDF und PNG: eine Gruppe ----------
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                WideButton(stringResource(R.string.export_pdf), Modifier.fillMaxWidth()) { showPdf = true }
+                WideButton(stringResource(R.string.export_png), Modifier.fillMaxWidth()) { showPng = true }
+            }
 
             Spacer(Modifier.height(GroupGap))
 
@@ -445,7 +499,11 @@ fun SettingsScreen(vm: PlannerViewModel, onBack: () -> Unit) {
                     }
                     SkinTile(
                         sk = tileSkin,
-                        selected = s.customDesign.isEmpty() && s.design == index,
+                        selected = when {
+                            customActive -> false
+                            s.customDesign.isNotEmpty() -> index == 0 // Datei fehlt: Standarddesign
+                            else -> s.design == index
+                        },
                         description = design.name,
                         modifier = Modifier.weight(1f).aspectRatio(0.6f),
                     ) { vm.updateSettings { it.copy(design = index, customDesign = "") } }
@@ -600,15 +658,16 @@ fun SettingsScreen(vm: PlannerViewModel, onBack: () -> Unit) {
             active = s.autoBackup,
             initialN = s.autoBackupN,
             initialUnit = s.autoBackupUnit,
+            initialKeep = s.autoBackupKeep,
             onCancel = { showAuto = false },
             onDisable = {
                 showAuto = false
                 vm.disableAutoBackup()
                 toast(R.string.backup_auto_off)
             },
-            onConfirm = { n, unit ->
+            onConfirm = { n, unit, keep ->
                 showAuto = false
-                vm.enableAutoBackup(n, unit) { ok ->
+                vm.enableAutoBackup(n, unit, keep) { ok ->
                     toast(if (ok) R.string.backup_auto_on else R.string.backup_failed)
                 }
             },
@@ -647,7 +706,7 @@ private fun SkinSwitch(checked: Boolean, onChange: (Boolean) -> Unit) {
 }
 
 @Composable
-private fun SquareButton(text: String, onClick: () -> Unit) {
+private fun SquareButton(text: String, fontSize: TextUnit = 20.sp, onClick: () -> Unit) {
     val ink = LocalSkin.current.ink
     Box(
         Modifier
@@ -656,7 +715,7 @@ private fun SquareButton(text: String, onClick: () -> Unit) {
             .tapOrHold(onClick),
         contentAlignment = Alignment.Center,
     ) {
-        Text(text, color = ink, fontWeight = FontWeight.Bold, fontSize = 20.sp)
+        Text(text, color = ink, fontWeight = FontWeight.Bold, fontSize = fontSize, maxLines = 1)
     }
 }
 
