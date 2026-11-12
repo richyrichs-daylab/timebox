@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="section_widgets">विजेट</string>
+    <string name="widget_set_prios">दिखाई जाने वाली प्राथमिकताएँ</string>
+    <string name="widget_set_empty">खाली फ़ील्ड\nभी दिखाएँ?</string>
+    <string name="answer_yes">हाँ</string>
+    <string name="answer_no">नहीं</string>
+    <string name="wallpaper_set">लाइव वॉलपेपर सेट करें</string>
+    <string name="wallpaper_label">Timebox दिन</string>
+    <string name="wallpaper_description">आपके मौजूदा दिन को लाइव वॉलपेपर के रूप में दिखाता है।</string>
+    <string name="keep_title">कितने बैकअप रखें?</string>
+    <string name="keep_all">सभी</string>
+</resources>
