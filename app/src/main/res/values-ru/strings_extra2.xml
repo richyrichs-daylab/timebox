@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="section_widgets">Виджеты</string>
+    <string name="widget_set_prios">Отображаемые приоритеты</string>
+    <string name="widget_set_empty">Показывать и\nпустые поля?</string>
+    <string name="answer_yes">да</string>
+    <string name="answer_no">нет</string>
+    <string name="wallpaper_set">Установить живые обои</string>
+    <string name="wallpaper_label">День Timebox</string>
+    <string name="wallpaper_description">Показывает текущий день в виде живых обоев.</string>
+    <string name="keep_title">Сколько копий хранить?</string>
+    <string name="keep_all">все</string>
+</resources>
