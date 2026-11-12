@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="section_widgets">Widgets</string>
+    <string name="widget_set_prios">Prioridades exibidas</string>
+    <string name="widget_set_empty">Exibir também\ncampos vazios?</string>
+    <string name="answer_yes">sim</string>
+    <string name="answer_no">não</string>
+    <string name="wallpaper_set">Definir plano de fundo animado</string>
+    <string name="wallpaper_label">Dia do Timebox</string>
+    <string name="wallpaper_description">Mostra o seu dia atual como plano de fundo animado.</string>
+    <string name="keep_title">Quantos backups manter?</string>
+    <string name="keep_all">todos</string>
+</resources>
