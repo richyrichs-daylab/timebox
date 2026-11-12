@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="section_widgets">Widgets</string>
+    <string name="widget_set_prios">Displayed priorities</string>
+    <string name="widget_set_empty">Show empty\nfields too?</string>
+    <string name="answer_yes">yes</string>
+    <string name="answer_no">no</string>
+    <string name="wallpaper_set">Set live wallpaper</string>
+    <string name="wallpaper_label">Timebox day</string>
+    <string name="wallpaper_description">Shows your current day as a live wallpaper.</string>
+    <string name="keep_title">How many backups to keep?</string>
+    <string name="keep_all">all</string>
+</resources>
