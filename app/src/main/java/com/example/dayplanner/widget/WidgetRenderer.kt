@@ -12,6 +12,7 @@ import android.graphics.PorterDuffXfermode
 import android.graphics.RectF
 import android.graphics.Shader
 import android.graphics.Typeface
+import android.provider.Settings as SystemSettings
 import android.text.Layout
 import android.text.StaticLayout
 import android.text.TextPaint
@@ -107,9 +108,45 @@ object WidgetRenderer {
         return bitmap
     }
 
+    /** Live-Hintergrund: der ganze Tag in Bildschirmgröße, mit Abstand zu Status- und Navigationsleiste. */
+    fun renderWallpaper(
+        ctx: Context,
+        settings: Settings,
+        data: DayData,
+        date: LocalDate,
+        widthPx: Int,
+        heightPx: Int,
+    ): Bitmap {
+        val density = ctx.resources.displayMetrics.density
+        val bitmap = Bitmap.createBitmap(max(1, widthPx), max(1, heightPx), Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bitmap)
+        canvas.scale(density, density)
+        val skin = resolveSkinFor(ctx, settings, isNight(ctx))
+        Painter(
+            ctx, skin, WidgetSnapshot(settings, data, date), canvas,
+            widthPx / density, heightPx / density, live = true, hits = null,
+        ).drawWallpaper(statusBarDp(ctx), navigationBarDp(ctx))
+        return bitmap
+    }
+
     private fun isNight(ctx: Context): Boolean =
         (ctx.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) ==
             Configuration.UI_MODE_NIGHT_YES
+
+    private fun dimenDp(ctx: Context, name: String): Float {
+        val id = ctx.resources.getIdentifier(name, "dimen", "android")
+        return if (id > 0) ctx.resources.getDimensionPixelSize(id) / ctx.resources.displayMetrics.density else 0f
+    }
+
+    private fun statusBarDp(ctx: Context): Float = dimenDp(ctx, "status_bar_height")
+
+    private fun navigationBarDp(ctx: Context): Float {
+        val gestural = runCatching {
+            SystemSettings.Secure.getInt(ctx.contentResolver, "navigation_mode", 0) == 2
+        }.getOrDefault(false)
+        val gesture = dimenDp(ctx, "navigation_bar_gesture_height")
+        return if (gestural && gesture > 0f) gesture else dimenDp(ctx, "navigation_bar_height")
+    }
 }
 
 /** -1 = vergangen, 0 = aktuelle Stunde, 1 = kommend. */
@@ -145,6 +182,10 @@ private class Painter(
     private val gap = 8f
     private val nowMillis = System.currentTimeMillis()
 
+    // Abstand zu Status- und Navigationsleiste (nur Live-Hintergrund)
+    private var insetTop = 0f
+    private var insetBottom = 0f
+
     private val fillP = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
     private val strokeP = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE }
     private val iconP = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -158,6 +199,19 @@ private class Painter(
         hits?.add(Hit(r.left, r.top, r.right, r.bottom, type, key))
     }
 
+    /**
+     * Welche Prioritäten angezeigt werden. Widgets folgen den Widget-Einstellungen (Anzahl, leere Felder),
+     * Hauptseite, Export und Live-Hintergrund zeigen alle.
+     */
+    private fun prioIndexes(widget: Boolean): List<Int> {
+        val total = s.prioritiesFor(snap.date)
+        if (!widget) return (0 until total).toList()
+        val first = (0 until s.widgetPriosFor(snap.date)).toList()
+        if (s.widgetShowEmpty) return first
+        val filled = first.filter { snap.day.priorities[it].orEmpty().isNotBlank() }
+        return filled.ifEmpty { listOf(0) }
+    }
+
     // ------------------------------------------------------------ Gesamtbild
 
     fun draw(kind: WidgetKind) {
@@ -166,7 +220,7 @@ private class Painter(
 
         val area = RectF(gap, gap, w - gap, h - gap)
         when (kind) {
-            WidgetKind.PRIOS -> prios(area, s.prioritiesFor(snap.date))
+            WidgetKind.PRIOS -> prios(area, prioIndexes(true))
             WidgetKind.BRAINDUMP -> braindump(area)
             WidgetKind.TIMEBOX -> timebox(area)
             WidgetKind.PAGE -> page(0)
@@ -189,17 +243,25 @@ private class Painter(
         page(2)
     }
 
-    /** mode: 0 = mit Zahnrad, 1 = ohne Zahnrad, 2 = Export (nur Datum). */
+    /** Live-Hintergrund: wie die Hauptseite, ohne Zahnrad, Schloss und Pfeile. */
+    fun drawWallpaper(top: Float, bottom: Float) {
+        insetTop = top
+        insetBottom = bottom
+        background()
+        page(3)
+    }
+
+    /** mode: 0 = mit Zahnrad, 1 = ohne Zahnrad, 2 = Export (nur Datum), 3 = Live-Hintergrund (nur Datum). */
     private fun page(mode: Int) {
         val headerH = 52f
-        val head = RectF(gap, gap, w - gap, gap + headerH)
-        if (mode == 2) {
+        val head = RectF(gap, gap + insetTop, w - gap, gap + insetTop + headerH)
+        if (mode >= 2) {
             dateBox(RectF(head.left + 40f, head.top, head.right - 40f, head.bottom))
         } else {
             header(head, mode == 0)
         }
 
-        val content = RectF(gap, head.bottom + gap, w - gap, h - gap)
+        val content = RectF(gap, head.bottom + gap, w - gap, h - gap - insetBottom)
         val leftW = (content.width() - gap) / (1f + 1.15f)
         val left = RectF(content.left, content.top, content.left + leftW, content.bottom)
         val right = RectF(left.right + gap, content.top, content.right, content.bottom)
@@ -210,9 +272,10 @@ private class Painter(
             title(ctx.getString(R.string.priorities), RectF(left.left, y, left.right, y + titleH), 0)
             y += titleH + gap
         }
-        val count = s.prioritiesFor(snap.date)
+        val idx = prioIndexes(mode <= 1)
+        val count = idx.size
         val prioH = min(count * 44f + (count - 1) * lw + 2 * fw, (left.bottom - y) * 0.5f)
-        prios(RectF(left.left, y, left.right, y + prioH), count)
+        prios(RectF(left.left, y, left.right, y + prioH), idx)
         y += prioH + gap
 
         if (s.showBraindumpTitle) {
@@ -446,22 +509,23 @@ private class Painter(
 
     // ------------------------------------------------------------ Prioritäten
 
-    private fun prios(r: RectF, count: Int) {
+    private fun prios(r: RectF, idx: List<Int>) {
         val inner = frame(r, skin.prioFill.toArgb(), skin.frame.toArgb())
-        val n = max(1, count)
+        val n = max(1, idx.size)
         val ch = (inner.height() - (n - 1) * lw) / n
         for (i in 0 until n) {
+            val slot = idx.getOrElse(i) { i }
             val top = inner.top + i * (ch + lw)
             if (i > 0) hLine(inner.left, inner.right, top - lw, skin.line.toArgb())
             val cell = RectF(inner.left, top, inner.right, top + ch)
             cellText(
-                snap.day.priorities[i].orEmpty(),
+                snap.day.priorities[slot].orEmpty(),
                 cell,
                 skin.fieldInk.toArgb(),
                 min(15f, ch * 0.55f),
-                snap.day.strikeP.contains(i),
+                snap.day.strikeP.contains(slot),
             )
-            addHit(cell, HitType.PRIO, i)
+            addHit(cell, HitType.PRIO, slot)
         }
     }
 
@@ -537,7 +601,7 @@ private class Painter(
             val lineColor = skin.lineAt(i.toFloat() / rows).toArgb()
             if (i > 0) hLine(inner.left, inner.right, top - lw, lineColor)
 
-            // Ausgrauen und Hervorheben gelten nur für die Widgets, nicht für den Export.
+            // Ausgrauen und Hervorheben gelten für Widgets und Live-Hintergrund, nicht für den Export.
             val state = if (live) rowState(snap.date, s.dayStart, i, nowMillis) else 1
             val gray = s.grayPast && state < 0
             val highlight = s.highlightNow && state == 0
@@ -597,17 +661,18 @@ private class Painter(
         }
         val sideLeft = x - r.left
 
+        // Rechts wie auf der Hauptseite: erst das Schloss, ganz außen der Rechtspfeil.
         var rx = r.right
+        rx -= slot
+        val nextRect = RectF(rx, r.top, rx + slot, r.bottom)
+        chevron(nextRect, false, ink)
+        addHit(nextRect, HitType.NEXT)
         if (s.showLock) {
             rx -= slot
             val sr = RectF(rx, r.top, rx + slot, r.bottom)
             lock(sr, ink)
             addHit(sr, HitType.LOCK)
         }
-        rx -= slot
-        val nextRect = RectF(rx, r.top, rx + slot, r.bottom)
-        chevron(nextRect, false, ink)
-        addHit(nextRect, HitType.NEXT)
         val sideRight = r.right - rx
 
         // Datum immer mittig: links und rechts gleich viel Platz
