@@ -24,6 +24,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import com.example.dayplanner.data.Design
 import com.example.dayplanner.data.PasswordInfo
+import com.example.dayplanner.ui.CustomDesigns
 import com.example.dayplanner.ui.LockScreen
 import com.example.dayplanner.ui.MainScreen
 import com.example.dayplanner.ui.PlannerViewModel
@@ -36,12 +37,13 @@ class MainActivity : ComponentActivity() {
     private val vm: PlannerViewModel by viewModels()
     private var wasStopped = false
     private var settingsRequest by mutableIntStateOf(0)
+    private var designsVersion by mutableIntStateOf(0)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         if (savedInstanceState == null) handleIntent(intent)
-        setContent { PlannerRoot(vm, settingsRequest) }
+        setContent { PlannerRoot(vm, settingsRequest, designsVersion) }
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -56,6 +58,10 @@ class MainActivity : ComponentActivity() {
 
     override fun onStart() {
         super.onStart()
+        // Premium-Designs gelten nur, solange ihre Datei wirklich noch auf dem Telefon liegt.
+        CustomDesigns.invalidate()
+        designsVersion++
+        vm.reloadDesigns()
         // Beim Start und bei jeder Rückkehr aus dem Hintergrund: immer der aktuelle Tag.
         if (wasStopped) vm.goToday()
     }
@@ -71,7 +77,7 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-private fun PlannerRoot(vm: PlannerViewModel, settingsRequest: Int) {
+private fun PlannerRoot(vm: PlannerViewModel, settingsRequest: Int, designsVersion: Int) {
     val settings by vm.settings.collectAsState()
     val password by vm.password.collectAsState()
     val unlocked by vm.unlocked.collectAsState()
@@ -80,7 +86,7 @@ private fun PlannerRoot(vm: PlannerViewModel, settingsRequest: Int) {
 
     val s = settings
     val pw = password
-    val skin = remember(s?.customDesign, s?.design, s?.themeMode, dark) {
+    val skin = remember(s?.customDesign, s?.design, s?.themeMode, dark, designsVersion) {
         if (s == null) resolveSkin(Design.STANDARD, 0, dark) else resolveSkinFor(context, s, dark)
     }
 
