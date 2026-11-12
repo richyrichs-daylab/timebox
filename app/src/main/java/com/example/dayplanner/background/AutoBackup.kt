@@ -5,6 +5,7 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import com.example.dayplanner.data.BackupManager
+import com.example.dayplanner.data.BackupRetention
 import com.example.dayplanner.data.Downloads
 import com.example.dayplanner.data.Settings
 import com.example.dayplanner.data.SettingsRepository
@@ -55,7 +56,10 @@ object AutoBackup {
         return if (isDue(s, LocalDate.now())) runNow(app) else false
     }
 
-    /** Schreibt das Backup nach Download/Timebox, mit Backup-Passwort verschlüsselt, falls gesetzt. */
+    /**
+     * Schreibt das Backup nach Download/Timebox (mit Backup-Passwort verschlüsselt, falls gesetzt)
+     * und löscht danach die überzähligen eigenen Backups.
+     */
     suspend fun runNow(context: Context): Boolean = withContext(Dispatchers.IO) {
         try {
             val app = context.applicationContext
@@ -64,7 +68,11 @@ object AutoBackup {
             val ok = Downloads.save(app, "timebox-backup-$today.json", "application/json", "Timebox") { out ->
                 out.write(text.toByteArray(Charsets.UTF_8))
             }
-            if (ok) SettingsRepository(app).update { it.copy(lastBackup = today.toString()) }
+            if (ok) {
+                val repo = SettingsRepository(app)
+                repo.update { it.copy(lastBackup = today.toString()) }
+                BackupRetention.apply(app, repo.current().autoBackupKeep)
+            }
             ok
         } catch (e: Exception) {
             false
