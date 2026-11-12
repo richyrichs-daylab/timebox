@@ -60,9 +60,7 @@ class PlannerViewModel(app: Application) : AndroidViewModel(app) {
 
     init {
         selectDate(currentDate)
-        viewModelScope.launch {
-            _customDesigns.value = withContext(Dispatchers.IO) { CustomDesigns.list(getApplication<Application>()) }
-        }
+        reloadDesigns()
         viewModelScope.launch {
             applySchedules()
             ensureDailyWindow()
@@ -70,7 +68,7 @@ class PlannerViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    // ---------- Hintergrund: Widgets und Alarme ----------
+    // ---------- Hintergrund: Widgets, Live-Hintergrund und Alarme ----------
 
     private suspend fun refreshWidgets() {
         withContext(Dispatchers.Default) {
@@ -209,13 +207,18 @@ class PlannerViewModel(app: Application) : AndroidViewModel(app) {
 
     // ---------- Importierte Designs ----------
 
+    fun reloadDesigns() {
+        viewModelScope.launch {
+            _customDesigns.value = withContext(Dispatchers.IO) {
+                CustomDesigns.list(getApplication<Application>())
+            }
+        }
+    }
+
     fun importDesign(uri: Uri, onResult: (Boolean) -> Unit) {
         viewModelScope.launch {
-            val app = getApplication<Application>()
-            val entry = CustomDesigns.import(app, uri)
-            if (entry != null) {
-                _customDesigns.value = withContext(Dispatchers.IO) { CustomDesigns.list(app) }
-            }
+            val entry = CustomDesigns.import(getApplication<Application>(), uri)
+            if (entry != null) reloadDesigns()
             onResult(entry != null)
         }
     }
@@ -331,10 +334,17 @@ class PlannerViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    fun enableAutoBackup(n: Int, unit: Int, onResult: (Boolean) -> Unit) {
+    /** keep: wie viele automatische Backups bleiben, 0 = alle. */
+    fun enableAutoBackup(n: Int, unit: Int, keep: Int, onResult: (Boolean) -> Unit) {
         viewModelScope.launch {
             settingsRepo.update {
-                it.copy(autoBackup = true, autoBackupN = n, autoBackupUnit = unit, lastBackup = "")
+                it.copy(
+                    autoBackup = true,
+                    autoBackupN = n,
+                    autoBackupUnit = unit,
+                    autoBackupKeep = keep,
+                    lastBackup = "",
+                )
             }
             applySchedules()
             // erstes Backup sofort, danach nach Intervall
