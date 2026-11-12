@@ -13,6 +13,7 @@ import com.example.dayplanner.R
 import com.example.dayplanner.data.DayRepository
 import com.example.dayplanner.data.Settings
 import com.example.dayplanner.data.SettingsRepository
+import com.example.dayplanner.wallpaper.TimeboxWallpaperService
 import java.time.LocalDate
 import kotlin.math.roundToInt
 
@@ -37,7 +38,7 @@ object WidgetUpdater {
         return providers.firstOrNull { it.second.name == className }?.first
     }
 
-    /** Zeichnet alle platzierten Widgets neu (nach Änderungen in der App). */
+    /** Zeichnet alle platzierten Widgets und den Live-Hintergrund neu (nach Änderungen in der App). */
     suspend fun refreshAll(context: Context) {
         val app = context.applicationContext
         val manager = AppWidgetManager.getInstance(app)
@@ -47,6 +48,7 @@ object WidgetUpdater {
             if (ids.isEmpty()) continue
             update(app, manager, kind, ids, settings)
         }
+        TimeboxWallpaperService.redrawAll()
     }
 
     suspend fun update(
