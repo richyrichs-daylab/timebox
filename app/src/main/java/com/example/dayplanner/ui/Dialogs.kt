@@ -21,6 +21,7 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -30,6 +31,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.res.stringResource
@@ -168,26 +171,42 @@ private fun NumberList(range: IntRange, value: Int, onSelect: (Int) -> Unit) {
 
 // ---------------------------------------------------------------- Backup automatisieren
 
+/**
+ * Intervall und Aufbewahrung der automatischen Backups.
+ * keep in onConfirm: 0 = alle Backups behalten, sonst die Anzahl.
+ */
 @Composable
 fun AutoBackupDialog(
     active: Boolean,
     initialN: Int,
     initialUnit: Int,
+    initialKeep: Int,
     onCancel: () -> Unit,
     onDisable: () -> Unit,
-    onConfirm: (Int, Int) -> Unit,
+    onConfirm: (Int, Int, Int) -> Unit,
 ) {
     val skin = LocalSkin.current
     var text by remember { mutableStateOf(initialN.toString()) }
     var unit by remember { mutableIntStateOf(initialUnit) }
+    var keepAll by remember { mutableStateOf(initialKeep == 0) }
+    var keepText by remember { mutableStateOf(if (initialKeep > 0) initialKeep.toString() else "1") }
+    var keepFocusWanted by remember { mutableStateOf(false) }
+    val keepFocus = remember { FocusRequester() }
+
     val daily = unit == 0
     val n = text.toIntOrNull() ?: 0
+    val keepN = keepText.toIntOrNull() ?: 0
     val labels = listOf(
         stringResource(R.string.unit_daily),
         stringResource(R.string.unit_weekly),
         stringResource(R.string.unit_monthly),
         stringResource(R.string.unit_yearly),
     )
+
+    // Erst nach einem Tipp auf das Zahlenfeld wird es zum Textfeld mit Fokus.
+    LaunchedEffect(keepAll, keepFocusWanted) {
+        if (!keepAll && keepFocusWanted) keepFocus.requestFocus()
+    }
 
     DialogFrame(onCancel) {
         Text(
@@ -250,13 +269,85 @@ fun AutoBackupDialog(
                 }
             }
         }
+
+        // ---------- Wieviele Backups behalten? ----------
+        Spacer(Modifier.height(20.dp))
+        Text(
+            stringResource(R.string.keep_title),
+            color = skin.ink,
+            fontWeight = FontWeight.ExtraBold,
+            fontSize = 18.sp,
+            modifier = Modifier.fillMaxWidth(),
+            textAlign = TextAlign.Center,
+        )
+        Spacer(Modifier.height(12.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+            // „alle": standardmäßig gewählt
+            Box(
+                Modifier
+                    .size(72.dp)
+                    .alpha(if (keepAll) 1f else 0.35f)
+                    .border(1.5.dp, skin.ink)
+                    .tapOrHold { keepAll = true },
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    stringResource(R.string.keep_all),
+                    color = skin.ink,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 20.sp,
+                    maxLines = 1,
+                )
+            }
+            // Zahl: wird durch Tippen gewählt und zum Textfeld
+            if (keepAll) {
+                Box(
+                    Modifier
+                        .size(72.dp)
+                        .alpha(0.35f)
+                        .border(1.5.dp, skin.ink)
+                        .tapOrHold {
+                            keepAll = false
+                            keepFocusWanted = true
+                        },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(keepText, color = skin.ink, fontWeight = FontWeight.Bold, fontSize = 22.sp)
+                }
+            } else {
+                BasicTextField(
+                    value = keepText,
+                    onValueChange = { input ->
+                        val digits = input.filter { it.isDigit() }.take(3)
+                        if (digits.isEmpty() || digits.toInt() > 0) keepText = digits
+                    },
+                    singleLine = true,
+                    textStyle = TextStyle(
+                        color = skin.ink,
+                        fontSize = 22.sp,
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.Center,
+                    ),
+                    cursorBrush = SolidColor(skin.ink),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    modifier = Modifier
+                        .size(72.dp)
+                        .border(1.5.dp, skin.ink)
+                        .focusRequester(keepFocus),
+                    decorationBox = { inner ->
+                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { inner() }
+                    },
+                )
+            }
+        }
+
         Spacer(Modifier.height(16.dp))
         DialogButtons(
             cancel = stringResource(R.string.dlg_cancel),
             confirm = stringResource(R.string.dlg_confirm),
-            confirmEnabled = daily || n >= 1,
+            confirmEnabled = (daily || n >= 1) && (keepAll || keepN >= 1),
             onCancel = onCancel,
-            onConfirm = { onConfirm(if (daily) 1 else n, unit) },
+            onConfirm = { onConfirm(if (daily) 1 else n, unit, if (keepAll) 0 else keepN) },
             middle = if (active) stringResource(R.string.dlg_disable) else null,
             onMiddle = onDisable,
         )
