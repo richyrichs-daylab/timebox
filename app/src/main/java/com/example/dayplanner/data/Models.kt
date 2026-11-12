@@ -33,12 +33,15 @@ data class Settings(
     val notifPlan: Boolean = false,
     val notifPrios: Boolean = false,
     val notifBoth: Boolean = false,
+    val widgetPrios: Int = 0,             // in Widgets angezeigte Prioritäten, 0 = so viele wie oben (folgt automatisch)
+    val widgetShowEmpty: Boolean = true,  // leere Prioritäten-Felder in Widgets anzeigen
     val allowRelease: Boolean = true,     // Toggle "Lock-in-Aufhebung"
     val lockUntil: Long = 0L,             // Ende der Zeit-/Tagessperre (Epoch-Millis), 0 = keine
     val lockReleasable: Boolean = true,   // beim Start der Sperre festgehalten
     val autoBackup: Boolean = false,
     val autoBackupN: Int = 1,
     val autoBackupUnit: Int = 0,          // 0 täglich, 1 wöchentlich, 2 monatlich, 3 jährlich
+    val autoBackupKeep: Int = 0,          // wie viele automatische Backups bleiben, 0 = alle
     val lastBackup: String = "",          // ISO-Datum
     val dailyBraindump: String = "",      // Vorlage "tägliche Fragen"
     val dailyFilledUntil: String = "",    // ISO-Datum, bis wohin die Vorlage eingetragen ist
@@ -60,8 +63,10 @@ data class Settings(
         priorities = priorities.coerceIn(1, 10),
         design = design.coerceIn(0, Design.entries.size - 1),
         themeMode = themeMode.coerceIn(0, 2),
+        widgetPrios = widgetPrios.coerceIn(0, 10),
         autoBackupN = autoBackupN.coerceIn(1, 999),
         autoBackupUnit = autoBackupUnit.coerceIn(0, 3),
+        autoBackupKeep = autoBackupKeep.coerceIn(0, 999),
     )
 
     /** Anzahl der Prioritäten, die an einem bestimmten Tag gelten. */
@@ -71,6 +76,16 @@ data class Settings(
         val key = date.toString()
         return sorted.entries.lastOrNull { it.key <= key }?.value ?: sorted.values.first()
     }
+
+    /** Anzahl der in Widgets angezeigten Prioritäten für einen Tag (höchstens die Anzahl dieses Tages). */
+    fun widgetPriosFor(date: LocalDate): Int {
+        val total = prioritiesFor(date)
+        return (if (widgetPrios <= 0) total else minOf(widgetPrios, total)).coerceAtLeast(1)
+    }
+
+    /** Die Zahl, die in den Einstellungen im Feld "angezeigte Prioritäten" steht. */
+    val widgetPriosEffective: Int
+        get() = (if (widgetPrios <= 0) priorities else minOf(widgetPrios, priorities)).coerceAtLeast(1)
 
     companion object {
         const val EPOCH = "0000-01-01"
