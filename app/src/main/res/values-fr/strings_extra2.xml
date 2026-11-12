@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="section_widgets">Widgets</string>
+    <string name="widget_set_prios">Priorités affichées</string>
+    <string name="widget_set_empty">Afficher aussi les\nchamps vides ?</string>
+    <string name="answer_yes">oui</string>
+    <string name="answer_no">non</string>
+    <string name="wallpaper_set">Définir le fond d’écran animé</string>
+    <string name="wallpaper_label">Jour Timebox</string>
+    <string name="wallpaper_description">Affiche votre journée actuelle en fond d’écran animé.</string>
+    <string name="keep_title">Combien de sauvegardes conserver ?</string>
+    <string name="keep_all">toutes</string>
+</resources>
