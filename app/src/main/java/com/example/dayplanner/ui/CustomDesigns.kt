@@ -1,6 +1,7 @@
 package com.example.dayplanner.ui
 
 import android.content.Context
+import android.content.Intent
 import android.net.Uri
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
@@ -11,21 +12,59 @@ import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.io.ByteArrayOutputStream
 import java.io.File
+import java.io.FileNotFoundException
 import java.util.concurrent.ConcurrentHashMap
 
 class CustomEntry(val id: String, val name: String, val skin: Skin)
 
 /**
  * Importierte Design-Dateien (reine Daten, kein Code). Format: JSON mit
- * "format": "timebox-design" und "version": 1. Ablage: App-Speicher, Ordner "designs".
+ * "format": "timebox-design" und "version": 1.
+ *
+ * Die App kopiert die Datei NICHT. Sie merkt sich nur ihren Ort und liest sie jedes Mal dort.
+ * Liegt die Datei nicht mehr dort (gelöscht, verschoben, umbenannt), ist das Design nicht verfügbar
+ * und die App nimmt das Standarddesign.
  */
 object CustomDesigns {
     private const val MAX_BYTES = 200_000
     private val ID_REGEX = Regex("[a-z0-9_-]{1,40}")
     private val cache = ConcurrentHashMap<String, Skin>()
+    private var migrated = false
 
-    private fun dir(context: Context): File =
-        File(context.applicationContext.filesDir, "designs").apply { mkdirs() }
+    private fun indexFile(context: Context) =
+        File(context.applicationContext.filesDir, "designs_index.json")
+
+    @Synchronized
+    private fun readIndex(context: Context): MutableMap<String, String> {
+        val map = LinkedHashMap<String, String>()
+        val f = indexFile(context)
+        if (!f.exists()) return map
+        runCatching {
+            val o = JSONObject(f.readText())
+            o.keys().forEach { k -> map[k] = o.getString(k) }
+        }
+        return map
+    }
+
+    @Synchronized
+    private fun writeIndex(context: Context, map: Map<String, String>) {
+        val o = JSONObject()
+        map.forEach { (k, v) -> o.put(k, v) }
+        indexFile(context).writeText(o.toString())
+    }
+
+    /** Früher angelegte Kopien im App-Speicher werden entfernt. */
+    @Synchronized
+    private fun migrate(context: Context) {
+        if (migrated) return
+        migrated = true
+        File(context.applicationContext.filesDir, "designs").deleteRecursively()
+    }
+
+    /** Vergisst alle gelesenen Designs: beim nächsten Zugriff wird die Datei wieder gelesen. */
+    fun invalidate() {
+        cache.clear()
+    }
 
     private fun colorOf(s: String): Color = Color(android.graphics.Color.parseColor(s.trim()))
 
@@ -97,25 +136,63 @@ object CustomDesigns {
         null
     }
 
-    /** Importiert eine Design-Datei und speichert sie im App-Speicher. */
+    /** Liest die Datei am angegebenen Ort. Wirft FileNotFoundException oder SecurityException, wenn sie weg ist. */
+    private fun readBounded(context: Context, uri: Uri): String? {
+        val input = context.contentResolver.openInputStream(uri) ?: throw FileNotFoundException()
+        input.use { stream ->
+            val out = ByteArrayOutputStream()
+            val buf = ByteArray(8192)
+            var total = 0
+            while (true) {
+                val n = stream.read(buf)
+                if (n <= 0) break
+                total += n
+                if (total > MAX_BYTES) return null
+                out.write(buf, 0, n)
+            }
+            return String(out.toByteArray(), Charsets.UTF_8)
+        }
+    }
+
+    private class Loaded(val entry: CustomEntry?, val gone: Boolean)
+
+    private fun loadFrom(context: Context, uriString: String): Loaded = try {
+        val text = readBounded(context, Uri.parse(uriString))
+        Loaded(if (text == null) null else parse(text), false)
+    } catch (e: FileNotFoundException) {
+        Loaded(null, true)
+    } catch (e: SecurityException) {
+        Loaded(null, true)
+    } catch (e: Exception) {
+        Loaded(null, false)
+    }
+
+    /** Entfernt ein Design dauerhaft aus der Liste, weil seine Datei nicht mehr existiert. */
+    private fun forget(context: Context, id: String) {
+        val map = readIndex(context)
+        val uriString = map.remove(id) ?: return
+        writeIndex(context, map)
+        cache.remove(id)
+        runCatching {
+            context.contentResolver.releasePersistableUriPermission(
+                Uri.parse(uriString),
+                Intent.FLAG_GRANT_READ_URI_PERMISSION,
+            )
+        }
+    }
+
+    /** Merkt sich den Ort der gewählten Datei. Es wird nichts kopiert. */
     suspend fun import(context: Context, uri: Uri): CustomEntry? = withContext(Dispatchers.IO) {
         try {
-            val bytes = context.contentResolver.openInputStream(uri)?.use { input ->
-                val out = ByteArrayOutputStream()
-                val buf = ByteArray(8192)
-                var total = 0
-                while (true) {
-                    val n = input.read(buf)
-                    if (n <= 0) break
-                    total += n
-                    if (total > MAX_BYTES) return@withContext null
-                    out.write(buf, 0, n)
-                }
-                out.toByteArray()
-            } ?: return@withContext null
-            val text = String(bytes, Charsets.UTF_8)
+            migrate(context)
+            val text = readBounded(context, uri) ?: return@withContext null
             val entry = parse(text) ?: return@withContext null
-            File(dir(context), "${entry.id}.json").writeText(text)
+            runCatching {
+                context.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+            val map = readIndex(context)
+            map[entry.id] = uri.toString()
+            writeIndex(context, map)
             cache[entry.id] = entry.skin
             entry
         } catch (e: Exception) {
@@ -123,26 +200,48 @@ object CustomDesigns {
         }
     }
 
-    /** Alle importierten Designs, alphabetisch nach Dateiname. */
-    fun list(context: Context): List<CustomEntry> =
-        (dir(context).listFiles() ?: emptyArray())
-            .filter { it.extension == "json" }
-            .sortedBy { it.name }
-            .mapNotNull { f -> runCatching { parse(f.readText()) }.getOrNull() }
-            .also { entries -> entries.forEach { cache[it.id] = it.skin } }
+    /** Alle Designs, deren Datei gerade tatsächlich lesbar ist. */
+    fun list(context: Context): List<CustomEntry> {
+        migrate(context)
+        val out = ArrayList<CustomEntry>()
+        for ((id, uriString) in readIndex(context).entries.toList()) {
+            val loaded = loadFrom(context, uriString)
+            val entry = loaded.entry
+            if (entry != null && entry.id == id) {
+                cache[id] = entry.skin
+                out.add(entry)
+            } else {
+                cache.remove(id)
+                if (loaded.gone) forget(context, id)
+            }
+        }
+        return out.sortedBy { it.id }
+    }
 
     fun skinFor(context: Context, id: String): Skin? {
         if (!ID_REGEX.matches(id)) return null
         cache[id]?.let { return it }
-        val f = File(dir(context), "$id.json")
-        if (!f.exists()) return null
-        val entry = runCatching { parse(f.readText()) }.getOrNull() ?: return null
-        cache[id] = entry.skin
-        return entry.skin
+        migrate(context)
+        val uriString = readIndex(context)[id] ?: return null
+        val loaded = loadFrom(context, uriString)
+        val entry = loaded.entry
+        if (entry != null && entry.id == id) {
+            cache[id] = entry.skin
+            return entry.skin
+        }
+        if (loaded.gone) forget(context, id)
+        return null
     }
 }
 
-/** Das gewählte Design: importiert oder eingebaut. Fehlt die Datei, gilt das eingebaute Design. */
-fun resolveSkinFor(context: Context, s: Settings, systemDark: Boolean): Skin =
-    (if (s.customDesign.isNotEmpty()) CustomDesigns.skinFor(context, s.customDesign) else null)
-        ?: resolveSkin(s.designId, s.themeMode, systemDark)
+/**
+ * Das gewählte Design: importiert oder eingebaut. Fehlt die Datei eines importierten Designs,
+ * gilt das Standarddesign.
+ */
+fun resolveSkinFor(context: Context, s: Settings, systemDark: Boolean): Skin {
+    if (s.customDesign.isNotEmpty()) {
+        return CustomDesigns.skinFor(context, s.customDesign)
+            ?: resolveSkin(Design.STANDARD, s.themeMode, systemDark)
+    }
+    return resolveSkin(s.designId, s.themeMode, systemDark)
+}
