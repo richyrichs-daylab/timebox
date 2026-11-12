@@ -51,6 +51,8 @@ fun Settings.toJson(forBackup: Boolean = false): JSONObject {
         .put("notifPlan", notifPlan)
         .put("notifPrios", notifPrios)
         .put("notifBoth", notifBoth)
+        .put("widgetPrios", widgetPrios)
+        .put("widgetShowEmpty", widgetShowEmpty)
         .put("allowRelease", allowRelease)
         .put("dailyBraindump", dailyBraindump)
     if (!forBackup) {
@@ -59,6 +61,7 @@ fun Settings.toJson(forBackup: Boolean = false): JSONObject {
             .put("autoBackup", autoBackup)
             .put("autoBackupN", autoBackupN)
             .put("autoBackupUnit", autoBackupUnit)
+            .put("autoBackupKeep", autoBackupKeep)
             .put("lastBackup", lastBackup)
             .put("dailyFilledUntil", dailyFilledUntil)
             .put("backupSalt", backupSalt)
@@ -98,12 +101,15 @@ fun settingsFromJson(o: JSONObject): Settings {
         notifPlan = o.optBoolean("notifPlan", d.notifPlan),
         notifPrios = o.optBoolean("notifPrios", d.notifPrios),
         notifBoth = o.optBoolean("notifBoth", d.notifBoth),
+        widgetPrios = o.optInt("widgetPrios", d.widgetPrios),
+        widgetShowEmpty = o.optBoolean("widgetShowEmpty", d.widgetShowEmpty),
         allowRelease = o.optBoolean("allowRelease", d.allowRelease),
         lockUntil = o.optLong("lockUntil", d.lockUntil),
         lockReleasable = o.optBoolean("lockReleasable", d.lockReleasable),
         autoBackup = o.optBoolean("autoBackup", d.autoBackup),
         autoBackupN = o.optInt("autoBackupN", d.autoBackupN),
         autoBackupUnit = o.optInt("autoBackupUnit", d.autoBackupUnit),
+        autoBackupKeep = o.optInt("autoBackupKeep", d.autoBackupKeep),
         lastBackup = o.optString("lastBackup", d.lastBackup),
         dailyBraindump = o.optString("dailyBraindump", d.dailyBraindump),
         dailyFilledUntil = o.optString("dailyFilledUntil", d.dailyFilledUntil),
@@ -119,6 +125,7 @@ fun Settings.keepRuntimeFrom(cur: Settings): Settings = copy(
     autoBackup = cur.autoBackup,
     autoBackupN = cur.autoBackupN,
     autoBackupUnit = cur.autoBackupUnit,
+    autoBackupKeep = cur.autoBackupKeep,
     lastBackup = cur.lastBackup,
     dailyFilledUntil = cur.dailyFilledUntil,
     backupSalt = cur.backupSalt,
