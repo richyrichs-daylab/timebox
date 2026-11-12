@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="section_widgets">小组件</string>
+    <string name="widget_set_prios">显示的优先事项</string>
+    <string name="widget_set_empty">也显示\n空白栏？</string>
+    <string name="answer_yes">是</string>
+    <string name="answer_no">否</string>
+    <string name="wallpaper_set">设为动态壁纸</string>
+    <string name="wallpaper_label">Timebox 今日</string>
+    <string name="wallpaper_description">将当天日程显示为动态壁纸。</string>
+    <string name="keep_title">保留多少份备份？</string>
+    <string name="keep_all">全部</string>
+</resources>
