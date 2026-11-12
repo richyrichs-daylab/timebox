@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="section_widgets">Widgets</string>
+    <string name="widget_set_prios">Angezeigte Prioritäten</string>
+    <string name="widget_set_empty">Leere Felder\nauch anzeigen?</string>
+    <string name="answer_yes">ja</string>
+    <string name="answer_no">nein</string>
+    <string name="wallpaper_set">Live-Hintergrund festlegen</string>
+    <string name="wallpaper_label">Timebox-Tag</string>
+    <string name="wallpaper_description">Zeigt deinen aktuellen Tag als Live-Hintergrund.</string>
+    <string name="keep_title">Wieviele Backups behalten?</string>
+    <string name="keep_all">alle</string>
+</resources>
