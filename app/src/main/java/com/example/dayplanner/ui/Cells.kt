@@ -375,10 +375,19 @@ fun BlockField(
                 horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(4.dp),
             ) {
                 if (drawing) {
+                    // Ist der Radierer gewählt, wechselt ein Tipp darauf zurück zum Text (wie beim gewählten Stift).
+                    // Ist der Stift gewählt, wählt ein Tipp den Radierer.
                     ToolButton(
                         selected = erasing,
                         description = stringResource(R.string.cd_eraser),
-                        onClick = { erasing = !erasing },
+                        onClick = {
+                            if (erasing) {
+                                drawing = false
+                                erasing = false
+                            } else {
+                                erasing = true
+                            }
+                        },
                     ) { EraserIcon(ink, Modifier.size(26.dp)) }
                 }
                 ToolButton(
