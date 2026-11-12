@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="section_widgets">الأدوات</string>
+    <string name="widget_set_prios">الأولويات المعروضة</string>
+    <string name="widget_set_empty">عرض الحقول\nالفارغة أيضًا؟</string>
+    <string name="answer_yes">نعم</string>
+    <string name="answer_no">لا</string>
+    <string name="wallpaper_set">تعيين خلفية حية</string>
+    <string name="wallpaper_label">يوم Timebox</string>
+    <string name="wallpaper_description">يعرض يومك الحالي كخلفية حية.</string>
+    <string name="keep_title">كم نسخة احتياطية يجب الاحتفاظ بها؟</string>
+    <string name="keep_all">الكل</string>
+</resources>
