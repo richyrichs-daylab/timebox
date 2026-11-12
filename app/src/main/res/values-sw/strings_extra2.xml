@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="section_widgets">Wijeti</string>
+    <string name="widget_set_prios">Vipaumbele vinavyoonyeshwa</string>
+    <string name="widget_set_empty">Onyesha pia\nsehemu tupu?</string>
+    <string name="answer_yes">Ndiyo</string>
+    <string name="answer_no">La</string>
+    <string name="wallpaper_set">Weka mandhari hai</string>
+    <string name="wallpaper_label">Siku ya Timebox</string>
+    <string name="wallpaper_description">Huonyesha siku yako ya sasa kama mandhari hai.</string>
+    <string name="keep_title">Nakala ngapi za kuhifadhi?</string>
+    <string name="keep_all">zote</string>
+</resources>
