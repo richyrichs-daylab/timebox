@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
@@ -36,6 +37,13 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -98,31 +106,35 @@ fun TimeLockDialog(onCancel: () -> Unit, onStart: (Long) -> Unit) {
     val skin = LocalSkin.current
     var hours by remember { mutableIntStateOf(1) }
     var minutes by remember { mutableIntStateOf(0) }
+    val hoursLabel = stringResource(R.string.lock_hours)
+    val minutesLabel = stringResource(R.string.lock_minutes)
 
     DialogFrame(onCancel) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(
-                    stringResource(R.string.lock_hours),
+                    hoursLabel,
                     color = skin.ink,
                     fontWeight = FontWeight.Bold,
                     fontSize = 15.sp,
+                    modifier = Modifier.semantics { heading() },
                 )
                 Spacer(Modifier.height(8.dp))
-                NumberList(0..24, hours) { v ->
+                NumberList(0..24, hours, hoursLabel) { v ->
                     hours = v
                     if (v == 24) minutes = 0
                 }
             }
             Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(
-                    stringResource(R.string.lock_minutes),
+                    minutesLabel,
                     color = skin.ink,
                     fontWeight = FontWeight.Bold,
                     fontSize = 15.sp,
+                    modifier = Modifier.semantics { heading() },
                 )
                 Spacer(Modifier.height(8.dp))
-                NumberList(0..59, minutes) { v -> minutes = if (hours == 24) 0 else v }
+                NumberList(0..59, minutes, minutesLabel) { v -> minutes = if (hours == 24) 0 else v }
             }
         }
         Spacer(Modifier.height(16.dp))
@@ -137,7 +149,7 @@ fun TimeLockDialog(onCancel: () -> Unit, onStart: (Long) -> Unit) {
 }
 
 @Composable
-private fun NumberList(range: IntRange, value: Int, onSelect: (Int) -> Unit) {
+private fun NumberList(range: IntRange, value: Int, unitLabel: String, onSelect: (Int) -> Unit) {
     val skin = LocalSkin.current
     val state = rememberLazyListState(initialFirstVisibleItemIndex = (value - range.first - 2).coerceAtLeast(0))
     LazyColumn(
@@ -149,18 +161,23 @@ private fun NumberList(range: IntRange, value: Int, onSelect: (Int) -> Unit) {
     ) {
         items(range.last - range.first + 1) { idx ->
             val n = range.first + idx
-            val selected = n == value
+            val isSel = n == value
             Box(
                 Modifier
                     .fillMaxWidth()
                     .height(40.dp)
-                    .background(if (selected) skin.accent else Color.Transparent)
-                    .tapOrHold { onSelect(n) },
+                    .background(if (isSel) skin.accent else Color.Transparent)
+                    .tapOrHold { onSelect(n) }
+                    .clearAndSetSemantics {
+                        contentDescription = "$n $unitLabel"
+                        role = Role.RadioButton
+                        this.selected = isSel
+                    },
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
                     n.toString(),
-                    color = if (selected) skin.bg else skin.ink,
+                    color = if (isSel) skin.bg else skin.ink,
                     fontWeight = FontWeight.Bold,
                     fontSize = 18.sp,
                 )
@@ -202,6 +219,9 @@ fun AutoBackupDialog(
         stringResource(R.string.unit_monthly),
         stringResource(R.string.unit_yearly),
     )
+    val intervalLabel = stringResource(R.string.a11y_interval_count)
+    val keepCountLabel = stringResource(R.string.a11y_keep_count)
+    val keepAllLabel = stringResource(R.string.a11y_keep_all)
 
     // Erst nach einem Tipp auf das Zahlenfeld wird es zum Textfeld mit Fokus.
     LaunchedEffect(keepAll, keepFocusWanted) {
@@ -214,7 +234,9 @@ fun AutoBackupDialog(
             color = skin.ink,
             fontWeight = FontWeight.ExtraBold,
             fontSize = 18.sp,
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .semantics { heading() },
             textAlign = TextAlign.Center,
         )
         Spacer(Modifier.height(14.dp))
@@ -243,7 +265,8 @@ fun AutoBackupDialog(
                 modifier = Modifier
                     .size(72.dp)
                     .alpha(if (daily) 0.35f else 1f)
-                    .border(1.5.dp, skin.ink),
+                    .border(1.5.dp, skin.ink)
+                    .semantics { contentDescription = intervalLabel },
                 decorationBox = { inner ->
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { inner() }
                 },
@@ -256,7 +279,11 @@ fun AutoBackupDialog(
                             .fillMaxWidth()
                             .height(38.dp)
                             .border(if (unit == i) 3.dp else 1.dp, skin.ink)
-                            .tapOrHold { unit = i },
+                            .tapOrHold { unit = i }
+                            .semantics {
+                                role = Role.RadioButton
+                                this.selected = unit == i
+                            },
                         contentAlignment = Alignment.Center,
                     ) {
                         Text(
@@ -270,74 +297,99 @@ fun AutoBackupDialog(
             }
         }
 
-        // ---------- Wieviele Backups behalten? ----------
+        // ---------- Wie viele Backups behalten? ----------
         Spacer(Modifier.height(20.dp))
         Text(
             stringResource(R.string.keep_title),
             color = skin.ink,
             fontWeight = FontWeight.ExtraBold,
             fontSize = 18.sp,
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .semantics { heading() },
             textAlign = TextAlign.Center,
         )
         Spacer(Modifier.height(12.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-            // „alle": standardmäßig gewählt
-            Box(
-                Modifier
-                    .size(72.dp)
-                    .alpha(if (keepAll) 1f else 0.35f)
-                    .border(1.5.dp, skin.ink)
-                    .tapOrHold { keepAll = true },
-                contentAlignment = Alignment.Center,
+
+        // Gleicher Abstand links, zwischen den Quadraten und rechts, gemessen vom Fensterrand
+        // (das Fenster hat 16 dp Innenabstand).
+        BoxWithConstraints(Modifier.fillMaxWidth()) {
+            val squares = 72.dp
+            val edge = 16.dp
+            val g = ((maxWidth + edge * 2 - squares * 2) / 3f).coerceAtLeast(8.dp)
+            val start = (g - edge).coerceAtLeast(0.dp)
+            Row(
+                Modifier.padding(start = start),
+                horizontalArrangement = Arrangement.spacedBy(g),
             ) {
-                Text(
-                    stringResource(R.string.keep_all),
-                    color = skin.ink,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 20.sp,
-                    maxLines = 1,
-                )
-            }
-            // Zahl: wird durch Tippen gewählt und zum Textfeld
-            if (keepAll) {
+                // „alle": standardmäßig gewählt
                 Box(
                     Modifier
-                        .size(72.dp)
-                        .alpha(0.35f)
+                        .size(squares)
+                        .alpha(if (keepAll) 1f else 0.35f)
                         .border(1.5.dp, skin.ink)
-                        .tapOrHold {
-                            keepAll = false
-                            keepFocusWanted = true
+                        .tapOrHold { keepAll = true }
+                        .clearAndSetSemantics {
+                            contentDescription = keepAllLabel
+                            role = Role.RadioButton
+                            this.selected = keepAll
                         },
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text(keepText, color = skin.ink, fontWeight = FontWeight.Bold, fontSize = 22.sp)
-                }
-            } else {
-                BasicTextField(
-                    value = keepText,
-                    onValueChange = { input ->
-                        val digits = input.filter { it.isDigit() }.take(3)
-                        if (digits.isEmpty() || digits.toInt() > 0) keepText = digits
-                    },
-                    singleLine = true,
-                    textStyle = TextStyle(
+                    Text(
+                        stringResource(R.string.keep_all),
                         color = skin.ink,
-                        fontSize = 22.sp,
                         fontWeight = FontWeight.Bold,
-                        textAlign = TextAlign.Center,
-                    ),
-                    cursorBrush = SolidColor(skin.ink),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    modifier = Modifier
-                        .size(72.dp)
-                        .border(1.5.dp, skin.ink)
-                        .focusRequester(keepFocus),
-                    decorationBox = { inner ->
-                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { inner() }
-                    },
-                )
+                        fontSize = 20.sp,
+                        maxLines = 1,
+                    )
+                }
+                // Zahl: wird durch Tippen gewählt und zum Textfeld
+                if (keepAll) {
+                    Box(
+                        Modifier
+                            .size(squares)
+                            .alpha(0.35f)
+                            .border(1.5.dp, skin.ink)
+                            .tapOrHold {
+                                keepAll = false
+                                keepFocusWanted = true
+                            }
+                            .clearAndSetSemantics {
+                                contentDescription = "$keepCountLabel: $keepText"
+                                role = Role.RadioButton
+                                this.selected = false
+                            },
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(keepText, color = skin.ink, fontWeight = FontWeight.Bold, fontSize = 22.sp)
+                    }
+                } else {
+                    BasicTextField(
+                        value = keepText,
+                        onValueChange = { input ->
+                            val digits = input.filter { it.isDigit() }.take(3)
+                            if (digits.isEmpty() || digits.toInt() > 0) keepText = digits
+                        },
+                        singleLine = true,
+                        textStyle = TextStyle(
+                            color = skin.ink,
+                            fontSize = 22.sp,
+                            fontWeight = FontWeight.Bold,
+                            textAlign = TextAlign.Center,
+                        ),
+                        cursorBrush = SolidColor(skin.ink),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier
+                            .size(squares)
+                            .border(1.5.dp, skin.ink)
+                            .semantics { contentDescription = keepCountLabel }
+                            .focusRequester(keepFocus),
+                        decorationBox = { inner ->
+                            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { inner() }
+                        },
+                    )
+                }
             }
         }
 
