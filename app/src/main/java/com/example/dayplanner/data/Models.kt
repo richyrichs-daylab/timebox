@@ -35,6 +35,7 @@ data class Settings(
     val notifBoth: Boolean = false,
     val widgetPrios: Int = 0,             // in Widgets angezeigte Prioritäten, 0 = so viele wie oben (folgt automatisch)
     val widgetShowEmpty: Boolean = true,  // leere Prioritäten-Felder in Widgets anzeigen
+    val widgetInteractive: Boolean = true, // Widgets sind bedienbar (Felder, Pfeile, Schloss)
     val allowRelease: Boolean = true,     // Toggle "Lock-in-Aufhebung"
     val lockUntil: Long = 0L,             // Ende der Zeit-/Tagessperre (Epoch-Millis), 0 = keine
     val lockReleasable: Boolean = true,   // beim Start der Sperre festgehalten
