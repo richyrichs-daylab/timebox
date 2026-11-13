@@ -71,10 +71,17 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.disabled
+import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -94,12 +101,16 @@ import com.example.dayplanner.R
 import com.example.dayplanner.data.InkStroke
 import kotlin.math.roundToInt
 
-/** Klick ODER Gedrückthalten löst dieselbe Aktion aus. */
+/**
+ * Klick ODER Gedrückthalten löst dieselbe Aktion aus. Für Screenreader ist das Element zusätzlich
+ * ein klickbares Element, das seine Beschriftung aus den enthaltenen Texten bezieht.
+ */
 fun Modifier.tapOrHold(onAction: () -> Unit): Modifier = composed {
     val current by rememberUpdatedState(onAction)
-    pointerInput(Unit) {
-        detectTapGestures(onTap = { current() }, onLongPress = { current() })
-    }
+    semantics(mergeDescendants = true) { onClick { current(); true } }
+        .pointerInput(Unit) {
+            detectTapGestures(onTap = { current() }, onLongPress = { current() })
+        }
 }
 
 /**
@@ -110,17 +121,18 @@ fun Modifier.tapHoldDouble(onDouble: (() -> Unit)?, onAction: () -> Unit): Modif
     val current by rememberUpdatedState(onAction)
     val dbl by rememberUpdatedState(onDouble)
     val hasDouble = onDouble != null
-    pointerInput(hasDouble) {
-        if (hasDouble) {
-            detectTapGestures(
-                onDoubleTap = { dbl?.invoke() },
-                onTap = { current() },
-                onLongPress = { current() },
-            )
-        } else {
-            detectTapGestures(onTap = { current() }, onLongPress = { current() })
+    semantics(mergeDescendants = true) { onClick { current(); true } }
+        .pointerInput(hasDouble) {
+            if (hasDouble) {
+                detectTapGestures(
+                    onDoubleTap = { dbl?.invoke() },
+                    onTap = { current() },
+                    onLongPress = { current() },
+                )
+            } else {
+                detectTapGestures(onTap = { current() }, onLongPress = { current() })
+            }
         }
-    }
 }
 
 /** Meldet für die Höhenberechnung 0 und verhindert, dass langer Text das Layout aufbläht. */
@@ -187,6 +199,10 @@ fun WideButton(
         modifier
             .alpha(if (enabled) 1f else 0.4f)
             .heightIn(min = minHeight)
+            .semantics(mergeDescendants = true) {
+                role = Role.Button
+                if (!enabled) disabled()
+            }
             .then(if (enabled) Modifier.tapOrHold(onClick) else Modifier)
             .skinFrame(skin, skin.hourFill),
         contentAlignment = Alignment.Center,
@@ -219,6 +235,10 @@ private fun Modifier.fadeEnd(fade: Dp = 28.dp): Modifier = this
 
 // ---------------------------------------------------------------- Zelle
 
+/**
+ * label: Name der Zelle für Screenreader (z. B. "Priorität 2" oder "Timebox 14:00").
+ * status: zusätzlicher Zustand (z. B. "aktuelle Stunde").
+ */
 @Composable
 fun EditableCell(
     text: String,
@@ -232,6 +252,8 @@ fun EditableCell(
     handleKind: Int = -1,
     handleKey: Int = 0,
     onActive: ((EditHandle, Boolean) -> Unit)? = null,
+    label: String = "",
+    status: String = "",
 ) {
     val style = LocalTextStyle.current.copy(
         fontSize = 15.sp,
@@ -243,6 +265,21 @@ fun EditableCell(
     val handle = remember(handleKind, handleKey) { EditHandle(handleKind, handleKey) }
     val activeCallback by rememberUpdatedState(onActive)
 
+    val emptyWord = stringResource(R.string.a11y_empty)
+    val struckWord = stringResource(R.string.a11y_struck)
+    val lockedWord = stringResource(R.string.a11y_locked)
+    val strikeAction = stringResource(R.string.a11y_strike)
+    val description = when {
+        label.isEmpty() -> text
+        text.isEmpty() -> "$label, $emptyWord"
+        else -> "$label: $text"
+    }
+    val stateText = listOfNotNull(
+        if (struck) struckWord else null,
+        if (locked) lockedWord else null,
+        status.ifEmpty { null },
+    ).joinToString(", ")
+
     DisposableEffect(editing, locked) {
         val register = editing && !locked && handleKind >= 0 && activeCallback != null
         if (register) activeCallback?.invoke(handle, true)
@@ -252,8 +289,24 @@ fun EditableCell(
     Box(
         modifier
             .then(
-                if (editing) Modifier
-                else Modifier.tapHoldDouble(if (locked) null else onDoubleTap) { editing = true }
+                if (editing) {
+                    Modifier
+                } else {
+                    Modifier
+                        .tapHoldDouble(if (locked) null else onDoubleTap) { editing = true }
+                        .clearAndSetSemantics {
+                            contentDescription = description
+                            if (stateText.isNotEmpty()) stateDescription = stateText
+                            if (!locked && onDoubleTap != null) {
+                                customActions = listOf(
+                                    CustomAccessibilityAction(strikeAction) {
+                                        onDoubleTap()
+                                        true
+                                    }
+                                )
+                            }
+                        }
+                }
             )
             .padding(horizontal = 6.dp, vertical = if (wrap) 4.dp else 0.dp),
         contentAlignment = Alignment.CenterStart,
@@ -266,6 +319,7 @@ fun EditableCell(
                 enterSaves = true,
                 style = style,
                 handle = if (handleKind >= 0) handle else null,
+                label = label,
                 modifier = Modifier.fillMaxWidth(),
                 onDone = { value ->
                     editing = false
@@ -311,6 +365,16 @@ fun BlockField(
     val handle = remember { EditHandle(2, 0) }
     val activeCallback by rememberUpdatedState(onActive)
 
+    val label = stringResource(R.string.braindump)
+    val emptyWord = stringResource(R.string.a11y_empty)
+    val lockedWord = stringResource(R.string.a11y_locked)
+    val drawingWord = stringResource(R.string.a11y_has_drawing)
+    val description = if (text.isEmpty()) "$label, $emptyWord" else "$label: $text"
+    val stateText = listOfNotNull(
+        if (locked) lockedWord else null,
+        if (strokes.isNotEmpty()) drawingWord else null,
+    ).joinToString(", ")
+
     LaunchedEffect(editing, canDraw) {
         if (!editing || !canDraw) {
             drawing = false
@@ -329,7 +393,18 @@ fun BlockField(
         Box(
             Modifier
                 .fillMaxSize()
-                .then(if (editing) Modifier else Modifier.tapOrHold { editing = true })
+                .then(
+                    if (editing) {
+                        Modifier
+                    } else {
+                        Modifier
+                            .tapOrHold { editing = true }
+                            .clearAndSetSemantics {
+                                contentDescription = description
+                                if (stateText.isNotEmpty()) stateDescription = stateText
+                            }
+                    }
+                )
                 .padding(8.dp)
         ) {
             if (editing) {
@@ -340,6 +415,7 @@ fun BlockField(
                     enterSaves = false,
                     style = style,
                     handle = handle,
+                    label = label,
                     modifier = Modifier.fillMaxSize(),
                     onDone = { value ->
                         editing = false
@@ -417,12 +493,17 @@ private fun ToolButton(
     onClick: () -> Unit,
     icon: @Composable () -> Unit,
 ) {
+    val isSelected = selected
     Box(
         Modifier
             .size(42.dp)
             .clip(CircleShape)
             .background(if (selected) Color.Gray.copy(alpha = 0.22f) else Color.Transparent)
-            .semantics { contentDescription = description; role = Role.Button }
+            .semantics {
+                contentDescription = description
+                role = Role.Button
+                this.selected = isSelected
+            }
             .tapOrHold(onClick),
         contentAlignment = Alignment.Center,
     ) { icon() }
@@ -442,11 +523,16 @@ private fun DrawingLayer(
     var finger by remember { mutableStateOf<Offset?>(null) }
     val erasingNow by rememberUpdatedState(erasing)
     val onStrokeNow by rememberUpdatedState(onStroke)
+    val areaLabel = stringResource(R.string.a11y_drawing_area)
 
     // Sobald der fertige Strich in der Liste angekommen ist, wird der Live-Strich verworfen.
     LaunchedEffect(strokes) { live.clear() }
 
-    Box(modifier) {
+    Box(
+        modifier.then(
+            if (active) Modifier.semantics { contentDescription = areaLabel } else Modifier
+        )
+    ) {
         if (active) {
             Box(
                 Modifier
@@ -547,6 +633,7 @@ private fun FieldEditor(
     enterSaves: Boolean,
     style: TextStyle,
     handle: EditHandle?,
+    label: String,
     modifier: Modifier,
     onDone: (String) -> Unit,
 ) {
@@ -588,6 +675,7 @@ private fun FieldEditor(
         ),
         keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }),
         modifier = modifier
+            .then(if (label.isNotEmpty()) Modifier.semantics { contentDescription = label } else Modifier)
             .onPreviewKeyEvent { e ->
                 if (enterSaves && e.type == KeyEventType.KeyDown &&
                     (e.key == Key.Enter || e.key == Key.NumPadEnter)
