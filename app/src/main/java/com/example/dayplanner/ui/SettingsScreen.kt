@@ -63,7 +63,9 @@ import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -227,7 +229,9 @@ fun SettingsScreen(vm: PlannerViewModel, onBack: () -> Unit) {
                 Text(
                     text = stringResource(R.string.settings),
                     color = ink,
-                    modifier = Modifier.align(Alignment.Center),
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .semantics { heading() },
                     fontWeight = FontWeight.ExtraBold,
                     fontSize = 26.sp,
                 )
@@ -338,6 +342,7 @@ fun SettingsScreen(vm: PlannerViewModel, onBack: () -> Unit) {
                 color = ink,
                 fontWeight = FontWeight.ExtraBold,
                 fontSize = 18.sp,
+                modifier = Modifier.semantics { heading() },
             )
             Spacer(Modifier.height(12.dp))
             Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
@@ -354,6 +359,10 @@ fun SettingsScreen(vm: PlannerViewModel, onBack: () -> Unit) {
                         fontSize = 14.sp,
                     ) { vm.updateSettings { it.copy(widgetShowEmpty = !it.widgetShowEmpty) } }
                 }
+                // Aus: Ein Tipp irgendwo im Widget öffnet nur die App (das Zahnrad führt weiter zu den Einstellungen).
+                SettingRow(stringResource(R.string.widget_set_interactive)) {
+                    SkinSwitch(s.widgetInteractive) { v -> vm.updateSettings { it.copy(widgetInteractive = v) } }
+                }
             }
 
             Spacer(Modifier.height(GroupGap))
@@ -368,6 +377,7 @@ fun SettingsScreen(vm: PlannerViewModel, onBack: () -> Unit) {
                 color = ink,
                 fontWeight = FontWeight.ExtraBold,
                 fontSize = 18.sp,
+                modifier = Modifier.semantics { heading() },
             )
             Spacer(Modifier.height(12.dp))
             Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
@@ -403,7 +413,7 @@ fun SettingsScreen(vm: PlannerViewModel, onBack: () -> Unit) {
                     WideButton(stringResource(R.string.lock_time), Modifier.weight(1f), minHeight = 44.dp) {
                         showTimeLock = true
                     }
-                    ResetBox(resetEnabled) { vm.releaseLock() }
+                    ResetBox(resetEnabled, stringResource(R.string.a11y_reset_time)) { vm.releaseLock() }
                 }
                 Row(
                     Modifier.fillMaxWidth(),
@@ -413,7 +423,7 @@ fun SettingsScreen(vm: PlannerViewModel, onBack: () -> Unit) {
                     WideButton(stringResource(R.string.lock_day), Modifier.weight(1f), minHeight = 44.dp) {
                         showDayLock = true
                     }
-                    ResetBox(resetEnabled) { vm.releaseLock() }
+                    ResetBox(resetEnabled, stringResource(R.string.a11y_reset_day)) { vm.releaseLock() }
                 }
                 SettingRow(stringResource(R.string.set_allow_release)) {
                     SkinSwitch(s.allowRelease) { v -> vm.updateSettings { it.copy(allowRelease = v) } }
@@ -486,12 +496,13 @@ fun SettingsScreen(vm: PlannerViewModel, onBack: () -> Unit) {
                 text = stringResource(R.string.btn_donate),
                 fill = Color(0xFFFFFA5C),
                 dash = Color(0xFFFF8F1F),
+                description = stringResource(R.string.a11y_donate),
                 modifier = Modifier.fillMaxWidth(),
             ) { openLink(Links.DONATE) }
 
             Spacer(Modifier.height(GroupGap))
 
-            // ---------- Eingebaute Layout-Designs, ohne Beschriftung ----------
+            // ---------- Eingebaute Layout-Designs, ohne sichtbare Beschriftung ----------
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Design.entries.forEachIndexed { index, design ->
                     val tileSkin = remember(design, s.themeMode, systemDark) {
@@ -504,7 +515,7 @@ fun SettingsScreen(vm: PlannerViewModel, onBack: () -> Unit) {
                             s.customDesign.isNotEmpty() -> index == 0 // Datei fehlt: Standarddesign
                             else -> s.design == index
                         },
-                        description = design.name,
+                        description = designName(design),
                         modifier = Modifier.weight(1f).aspectRatio(0.6f),
                     ) { vm.updateSettings { it.copy(design = index, customDesign = "") } }
                 }
@@ -528,7 +539,7 @@ fun SettingsScreen(vm: PlannerViewModel, onBack: () -> Unit) {
                                 SkinTile(
                                     sk = entry.skin,
                                     selected = s.customDesign == entry.id,
-                                    description = entry.name,
+                                    description = entry.displayName(),
                                     modifier = Modifier.weight(1f).aspectRatio(0.6f),
                                 ) { vm.updateSettings { it.copy(customDesign = entry.id) } }
                             }
@@ -546,6 +557,7 @@ fun SettingsScreen(vm: PlannerViewModel, onBack: () -> Unit) {
                 text = stringResource(R.string.btn_designs),
                 fill = Color(0xFFFF9966),
                 dash = Color(0xFFE8185A),
+                description = stringResource(R.string.a11y_designs),
                 modifier = Modifier.fillMaxWidth(),
             ) { openLink(Links.DESIGNS) }
 
@@ -675,11 +687,25 @@ fun SettingsScreen(vm: PlannerViewModel, onBack: () -> Unit) {
     }
 }
 
-/** Kasten/Toggle links, Beschriftung rechts dahinter. */
+/** Übersetzter Name eines eingebauten Designs (für Screenreader). */
+@Composable
+private fun designName(d: Design): String = stringResource(
+    when (d) {
+        Design.STANDARD -> R.string.design_standard
+        Design.GRUNGE -> R.string.design_grunge
+        Design.CANDY -> R.string.design_candy
+        Design.CHROME -> R.string.design_chrome
+        Design.GOLD -> R.string.design_gold
+        Design.NEON -> R.string.design_neon
+    }
+)
+
+/** Kasten/Toggle links, Beschriftung rechts dahinter. Für Screenreader eine Einheit. */
 @Composable
 private fun SettingRow(label: String, control: @Composable () -> Unit) {
     val skin = LocalSkin.current
     Row(
+        Modifier.semantics(mergeDescendants = true) { },
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
@@ -721,9 +747,8 @@ private fun SquareButton(text: String, fontSize: TextUnit = 20.sp, onClick: () -
 
 /** Quadratischer Kasten mit rundem Reset-Pfeil. */
 @Composable
-private fun ResetBox(enabled: Boolean, onClick: () -> Unit) {
+private fun ResetBox(enabled: Boolean, description: String, onClick: () -> Unit) {
     val ink = LocalSkin.current.ink
-    val description = stringResource(R.string.cd_reset)
     Box(
         Modifier
             .size(44.dp)
@@ -780,6 +805,7 @@ private fun SkinTile(
     onClick: () -> Unit,
 ) {
     val current = LocalSkin.current
+    val isSelected = selected
     Box(
         modifier
             .border(
@@ -788,7 +814,11 @@ private fun SkinTile(
             )
             .padding(3.dp)
             .clipToBounds()
-            .semantics { contentDescription = description; role = Role.Button }
+            .semantics {
+                contentDescription = description
+                role = Role.RadioButton
+                this.selected = isSelected
+            }
             .tapOrHold(onClick)
     ) {
         SkinBackground(sk, Modifier.fillMaxSize(), unit = 10.dp)
