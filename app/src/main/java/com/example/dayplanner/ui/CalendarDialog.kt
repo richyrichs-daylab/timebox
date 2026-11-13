@@ -32,6 +32,14 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.disabled
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -39,6 +47,7 @@ import com.example.dayplanner.R
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
 import java.time.temporal.WeekFields
 import java.util.Locale
 
@@ -132,12 +141,19 @@ private fun CalendarBody(
     val today = LocalDate.now()
     val first = WeekFields.of(locale).firstDayOfWeek
     val offset = (month.atDay(1).dayOfWeek.value - first.value + 7) % 7
+    val fullFormat = remember(locale) { DateTimeFormatter.ofLocalizedDate(FormatStyle.FULL).withLocale(locale) }
+    val todayWord = stringResource(R.string.a11y_today)
+    val prevMonthLabel = stringResource(R.string.cd_prev_month)
+    val nextMonthLabel = stringResource(R.string.cd_next_month)
 
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
         // Monat und Navigation
         Row(Modifier.fillMaxWidth().height(44.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(
-                Modifier.size(44.dp).tapOrHold { month = month.minusMonths(1) },
+                Modifier
+                    .size(44.dp)
+                    .semantics { contentDescription = prevMonthLabel; role = Role.Button }
+                    .tapOrHold { month = month.minusMonths(1) },
                 contentAlignment = Alignment.Center,
             ) { Chevron(left = true, color = skin.ink, modifier = Modifier.size(20.dp)) }
             Text(
@@ -145,17 +161,23 @@ private fun CalendarBody(
                 color = skin.ink,
                 fontWeight = FontWeight.ExtraBold,
                 fontSize = 18.sp,
-                modifier = Modifier.weight(1f),
+                modifier = Modifier
+                    .weight(1f)
+                    .semantics { heading() },
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center,
             )
             Box(
-                Modifier.size(44.dp).tapOrHold { month = month.plusMonths(1) },
+                Modifier
+                    .size(44.dp)
+                    .semantics { contentDescription = nextMonthLabel; role = Role.Button }
+                    .tapOrHold { month = month.plusMonths(1) },
                 contentAlignment = Alignment.Center,
             ) { Chevron(left = false, color = skin.ink, modifier = Modifier.size(20.dp)) }
         }
 
-        // Wochentage (jede Spalte gleich breit, auch der Sonntag)
-        Row(Modifier.fillMaxWidth()) {
+        // Wochentage (jede Spalte gleich breit, auch der Sonntag). Für Screenreader überflüssig:
+        // Jeder Tag nennt sein volles Datum.
+        Row(Modifier.fillMaxWidth().clearAndSetSemantics { }) {
             for (k in 0 until 7) {
                 val dow = first.plus(k.toLong())
                 Box(Modifier.weight(1f).height(28.dp), contentAlignment = Alignment.Center) {
@@ -180,6 +202,8 @@ private fun CalendarBody(
                             val date = month.atDay(dayNum)
                             val isSel = date in selected
                             val enabled = minDate == null || !date.isBefore(minDate)
+                            val description = date.format(fullFormat) +
+                                if (date == today) ", $todayWord" else ""
                             Box(
                                 Modifier
                                     .size(36.dp)
@@ -190,7 +214,13 @@ private fun CalendarBody(
                                         if (date == today && !isSel) Modifier.border(1.5.dp, skin.ink, CircleShape)
                                         else Modifier
                                     )
-                                    .then(if (enabled) Modifier.tapOrHold { onDay(date) } else Modifier),
+                                    .then(if (enabled) Modifier.tapOrHold { onDay(date) } else Modifier)
+                                    .clearAndSetSemantics {
+                                        contentDescription = description
+                                        role = Role.Button
+                                        this.selected = isSel
+                                        if (!enabled) disabled()
+                                    },
                                 contentAlignment = Alignment.Center,
                             ) {
                                 Text(
