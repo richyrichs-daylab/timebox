@@ -143,10 +143,11 @@ fun MainScreen(vm: PlannerViewModel, onOpenSettings: () -> Unit) {
             toast(R.string.cal_empty)
             return
         }
+        val dayStart = s.dayStartFor(d.date)
         val hour = handle.key / 2
         val column = if (s.columns == 2 && handle.key % 2 == 1) 1 else 0
-        val offsetHours = (hour - s.dayStart + 24) % 24
-        val begin = d.date.atTime(s.dayStart, 0)
+        val offsetHours = (hour - dayStart + 24) % 24
+        val begin = d.date.atTime(dayStart, 0)
             .plusHours(offsetHours.toLong())
             .plusMinutes(column * 30L)
             .atZone(ZoneId.systemDefault())
@@ -338,7 +339,8 @@ private fun Content(
 
     BoxWithConstraints(modifier.clipToBounds().then(zoomModifier)) {
         val availPx = constraints.maxHeight
-        val rows = s.rows
+        // Zeilenzahl gilt pro Tag: frühere Tage behalten ihren Wert.
+        val rows = s.rowsFor(d.date)
         val titleBlock = if (s.showTimeboxTitle) TitleHeight + gap else 0.dp
 
         // Die Seite hat immer genau die verfügbare Höhe. Nur wenn der Platz (z. B. bei offener
@@ -687,10 +689,11 @@ private fun Timebox(
     modifier: Modifier,
 ) {
     val skin = LocalSkin.current
+    val rows = s.rowsFor(day.date)
     Box(modifier.skinFrame(skin, Color.Transparent)) {
         StableRows(
-            rowCount = s.rows,
-            lineColor = { i -> skin.lineAt(i.toFloat() / s.rows) },
+            rowCount = rows,
+            lineColor = { i -> skin.lineAt(i.toFloat() / rows) },
             lineWidth = skin.lineWidth,
             minRow = 0.dp,
             useNeeds = s.wrapText,
@@ -714,8 +717,11 @@ private fun TimeRow(
     onActive: (EditHandle, Boolean) -> Unit,
 ) {
     val skin = LocalSkin.current
-    val hour = (s.dayStart + i) % 24
-    val state = rowState(day.date, s.dayStart, i, now)
+    // Tagesbeginn und Zeilenzahl gelten pro Tag: frühere Tage behalten ihre Werte.
+    val dayStart = s.dayStartFor(day.date)
+    val rows = s.rowsFor(day.date)
+    val hour = (dayStart + i) % 24
+    val state = rowState(day.date, dayStart, i, now)
     val gray = s.grayPast && state < 0
     val highlight = s.highlightNow && state == 0
     val nowWord = stringResource(R.string.a11y_now)
@@ -764,7 +770,7 @@ private fun TimeRow(
             )
         }
         for (c in 0 until s.columns) {
-            VLine(skin.lineAt(i.toFloat() / s.rows), skin.lineWidth)
+            VLine(skin.lineAt(i.toFloat() / rows), skin.lineWidth)
             val cellKey = hour * 2 + c
             EditableCell(
                 text = day.data.timebox[cellKey].orEmpty(),
