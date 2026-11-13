@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_set_interactive">interaktiv</string>
+
+    <string name="a11y_active">aktiv</string>
+    <string name="a11y_inactive">inaktiv</string>
+    <string name="a11y_priority">Priorität %1$d</string>
+    <string name="a11y_timebox_cell">Timebox %1$s</string>
+    <string name="a11y_empty">leer</string>
+    <string name="a11y_struck">durchgestrichen</string>
+    <string name="a11y_locked">gesperrt</string>
+    <string name="a11y_now">aktuelle Stunde</string>
+    <string name="a11y_past">vergangene Stunde</string>
+    <string name="a11y_strike">Durchstreichen</string>
+    <string name="a11y_has_drawing">enthält eine Zeichnung</string>
+    <string name="a11y_drawing_area">Zeichenfläche</string>
+    <string name="a11y_today">heute</string>
+    <string name="a11y_reset_time">Zeitschloss entsperren</string>
+    <string name="a11y_reset_day">Tagesschloss entsperren</string>
+    <string name="a11y_donate">Entwickler unterstützen, öffnet einen Link</string>
+    <string name="a11y_designs">Mehr individuelle Designs, öffnet einen Link</string>
+    <string name="a11y_digits_entered">Eingegebene Ziffern: %1$d</string>
+    <string name="a11y_password">Passwort</string>
+    <string name="a11y_interval_count">Anzahl des Intervalls</string>
+    <string name="a11y_keep_count">Anzahl der zu behaltenden Backups</string>
+    <string name="a11y_keep_all">Alle Backups behalten</string>
+    <string name="a11y_widget_none">Keine Einträge</string>
+
+    <string name="cd_prev_month">Voriger Monat</string>
+    <string name="cd_next_month">Nächster Monat</string>
+
+    <string name="design_standard">Standard</string>
+    <string name="design_grunge">Schwarz-Weiß-Grunge</string>
+    <string name="design_candy">Candy-Karomuster</string>
+    <string name="design_chrome">Chrom-Himmel</string>
+    <string name="design_gold">Gold</string>
+    <string name="design_neon">Neon</string>
+
+    <string name="widget_desc_prios">Zeigt deine Prioritäten für heute, auch leere Felder. Tippe auf ein Feld, um es zu bearbeiten.</string>
+    <string name="widget_desc_braindump">Zeigt das heutige Braindump. Tippen zum Bearbeiten.</string>
+    <string name="widget_desc_timebox">Zeigt die heutige Stunden-Timebox. Tippe auf eine Zelle, um sie zu bearbeiten.</string>
+    <string name="widget_desc_page">Zeigt den ganzen Tag mit Pfeilen, Schloss und Einstellungen. Tippe auf ein Feld, um es zu bearbeiten.</string>
+    <string name="widget_desc_page_nogear">Zeigt den ganzen Tag mit Pfeilen und Schloss, ohne Zahnrad.</string>
+</resources>
