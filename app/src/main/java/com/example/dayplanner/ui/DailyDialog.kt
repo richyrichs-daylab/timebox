@@ -1,7 +1,7 @@
 package com.example.dayplanner.ui
 
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -19,6 +19,9 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -34,16 +37,19 @@ fun DailyDialog(initial: String, onCancel: () -> Unit, onConfirm: (String) -> Un
     val skin = LocalSkin.current
     var value by remember { mutableStateOf(TextFieldValue(initial, TextRange(initial.length))) }
     val focus = remember { FocusRequester() }
+    val title = stringResource(R.string.set_daily)
     LaunchedEffect(Unit) { focus.requestFocus() }
 
     DialogFrame(onCancel) {
         Text(
-            stringResource(R.string.set_daily),
+            title,
             color = skin.ink,
             fontWeight = FontWeight.ExtraBold,
             fontSize = 18.sp,
             textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .semantics { heading() },
         )
         Spacer(Modifier.height(12.dp))
         Box(
@@ -60,6 +66,7 @@ fun DailyDialog(initial: String, onCancel: () -> Unit, onConfirm: (String) -> Un
                 cursorBrush = SolidColor(skin.fieldInk),
                 modifier = Modifier
                     .fillMaxSize()
+                    .semantics { contentDescription = title }
                     .focusRequester(focus),
             )
         }
