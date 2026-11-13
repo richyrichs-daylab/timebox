@@ -53,6 +53,7 @@ fun Settings.toJson(forBackup: Boolean = false): JSONObject {
         .put("notifBoth", notifBoth)
         .put("widgetPrios", widgetPrios)
         .put("widgetShowEmpty", widgetShowEmpty)
+        .put("widgetInteractive", widgetInteractive)
         .put("allowRelease", allowRelease)
         .put("dailyBraindump", dailyBraindump)
     if (!forBackup) {
@@ -103,6 +104,7 @@ fun settingsFromJson(o: JSONObject): Settings {
         notifBoth = o.optBoolean("notifBoth", d.notifBoth),
         widgetPrios = o.optInt("widgetPrios", d.widgetPrios),
         widgetShowEmpty = o.optBoolean("widgetShowEmpty", d.widgetShowEmpty),
+        widgetInteractive = o.optBoolean("widgetInteractive", d.widgetInteractive),
         allowRelease = o.optBoolean("allowRelease", d.allowRelease),
         lockUntil = o.optLong("lockUntil", d.lockUntil),
         lockReleasable = o.optBoolean("lockReleasable", d.lockReleasable),
