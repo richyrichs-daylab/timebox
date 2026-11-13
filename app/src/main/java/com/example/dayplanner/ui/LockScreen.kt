@@ -32,8 +32,11 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
@@ -80,6 +83,7 @@ private fun NumericLock(vm: PlannerViewModel) {
     }
 
     val undoText = stringResource(R.string.cd_undo)
+    val digitsLabel = stringResource(R.string.a11y_digits_entered, entered.length)
     val rows = listOf(
         listOf("1", "2", "3"),
         listOf("4", "5", "6"),
@@ -91,7 +95,12 @@ private fun NumericLock(vm: PlannerViewModel) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Box(Modifier.height(48.dp), contentAlignment = Alignment.Center) {
+        Box(
+            Modifier
+                .height(48.dp)
+                .clearAndSetSemantics { contentDescription = digitsLabel },
+            contentAlignment = Alignment.Center,
+        ) {
             Text("•".repeat(entered.length), color = skin.ink, fontSize = 30.sp, maxLines = 1)
         }
         rows.forEach { row ->
@@ -116,8 +125,11 @@ private fun PadKey(label: String, description: String, onClick: () -> Unit) {
     Box(
         Modifier
             .size(KeySize)
-            .semantics { contentDescription = description; role = Role.Button }
             .tapOrHold(onClick)
+            .clearAndSetSemantics {
+                contentDescription = description
+                role = Role.Button
+            }
             .skinFrame(skin, skin.hourFill),
         contentAlignment = Alignment.Center,
     ) {
@@ -131,6 +143,7 @@ private fun TextLock(vm: PlannerViewModel) {
     var text by remember { mutableStateOf("") }
     var wrong by remember { mutableStateOf(false) }
     val focus = remember { FocusRequester() }
+    val passwordLabel = stringResource(R.string.a11y_password)
     LaunchedEffect(Unit) { focus.requestFocus() }
 
     fun submit() {
@@ -167,10 +180,17 @@ private fun TextLock(vm: PlannerViewModel) {
                 keyboardActions = KeyboardActions(onDone = { submit() }),
                 modifier = Modifier
                     .fillMaxWidth()
+                    .semantics { contentDescription = passwordLabel }
                     .focusRequester(focus),
             )
         }
-        Box(Modifier.height(24.dp), contentAlignment = Alignment.Center) {
+        // Ein falsches Passwort wird vom Screenreader automatisch angesagt.
+        Box(
+            Modifier
+                .height(24.dp)
+                .semantics { liveRegion = LiveRegionMode.Polite },
+            contentAlignment = Alignment.Center,
+        ) {
             if (wrong) Text(stringResource(R.string.pw_wrong), color = skin.ink, fontSize = 14.sp)
         }
     }
@@ -187,6 +207,7 @@ fun PasswordDialog(
     var text by remember { mutableStateOf("") }
     val valid = text.length >= 4
     val focus = remember { FocusRequester() }
+    val passwordLabel = stringResource(R.string.a11y_password)
     LaunchedEffect(Unit) { focus.requestFocus() }
 
     Dialog(onDismissRequest = onCancel) {
@@ -222,6 +243,7 @@ fun PasswordDialog(
                     keyboardActions = KeyboardActions(onDone = { if (valid) onConfirm(text) }),
                     modifier = Modifier
                         .fillMaxWidth()
+                        .semantics { contentDescription = passwordLabel }
                         .focusRequester(focus),
                 )
             }
