@@ -223,8 +223,7 @@ private class Painter(
             WidgetKind.PRIOS -> prios(area, prioIndexes(true))
             WidgetKind.BRAINDUMP -> braindump(area)
             WidgetKind.TIMEBOX -> timebox(area)
-            WidgetKind.PAGE -> page(0)
-            WidgetKind.PAGE_NOGEAR -> page(1)
+            WidgetKind.PAGE -> page(true)
         }
 
         // Runde Ecken
@@ -240,7 +239,7 @@ private class Painter(
     /** Export-Seite: nur das Datum oben, keine runden Ecken. */
     fun drawExport() {
         background()
-        page(2)
+        page(false)
     }
 
     /** Live-Hintergrund: wie die Hauptseite, ohne Zahnrad, Schloss und Pfeile. */
@@ -248,17 +247,17 @@ private class Painter(
         insetTop = top
         insetBottom = bottom
         background()
-        page(3)
+        page(false)
     }
 
-    /** mode: 0 = mit Zahnrad, 1 = ohne Zahnrad, 2 = Export (nur Datum), 3 = Live-Hintergrund (nur Datum). */
-    private fun page(mode: Int) {
+    /** widget = true: Kopfzeile mit Pfeilen, Zahnrad und Schloss. false: nur das Datum (Export, Live-Hintergrund). */
+    private fun page(widget: Boolean) {
         val headerH = 52f
         val head = RectF(gap, gap + insetTop, w - gap, gap + insetTop + headerH)
-        if (mode >= 2) {
-            dateBox(RectF(head.left + 40f, head.top, head.right - 40f, head.bottom))
+        if (widget) {
+            header(head)
         } else {
-            header(head, mode == 0)
+            dateBox(RectF(head.left + 40f, head.top, head.right - 40f, head.bottom))
         }
 
         val content = RectF(gap, head.bottom + gap, w - gap, h - gap - insetBottom)
@@ -272,7 +271,7 @@ private class Painter(
             title(ctx.getString(R.string.priorities), RectF(left.left, y, left.right, y + titleH), 0)
             y += titleH + gap
         }
-        val idx = prioIndexes(mode <= 1)
+        val idx = prioIndexes(widget)
         val count = idx.size
         val prioH = min(count * 44f + (count - 1) * lw + 2 * fw, (left.bottom - y) * 0.5f)
         prios(RectF(left.left, y, left.right, y + prioH), idx)
@@ -587,7 +586,9 @@ private class Painter(
 
     private fun timebox(r: RectF) {
         val inner = frame(r, 0, skin.frame.toArgb())
-        val rows = s.rows
+        // Tagesbeginn und Zeilenzahl gelten pro Tag: frühere Tage behalten ihre Werte.
+        val rows = s.rowsFor(snap.date)
+        val dayStart = s.dayStartFor(snap.date)
         val cols = s.columns
         val rowH = (inner.height() - (rows - 1) * lw) / rows
         val hourFont = (rowH * 0.55f).coerceIn(6f, 17f)
@@ -597,12 +598,12 @@ private class Painter(
 
         for (i in 0 until rows) {
             val top = inner.top + i * (rowH + lw)
-            val hour = (s.dayStart + i) % 24
+            val hour = (dayStart + i) % 24
             val lineColor = skin.lineAt(i.toFloat() / rows).toArgb()
             if (i > 0) hLine(inner.left, inner.right, top - lw, lineColor)
 
             // Ausgrauen und Hervorheben gelten für Widgets und Live-Hintergrund, nicht für den Export.
-            val state = if (live) rowState(snap.date, s.dayStart, i, nowMillis) else 1
+            val state = if (live) rowState(snap.date, dayStart, i, nowMillis) else 1
             val gray = s.grayPast && state < 0
             val highlight = s.highlightNow && state == 0
             val rowRect = RectF(inner.left, top, inner.right, top + rowH)
@@ -642,7 +643,8 @@ private class Painter(
 
     // ------------------------------------------------------------ Kopfzeile
 
-    private fun header(r: RectF, withGear: Boolean) {
+    /** Kopfzeile des Seiten-Widgets. Zahnrad und Schloss folgen den Widget-Einstellungen. */
+    private fun header(r: RectF) {
         val ink = skin.ink.toArgb()
         val slot = 44f
 
@@ -653,7 +655,7 @@ private class Painter(
             addHit(sr, HitType.PREV)
             x += slot
         }
-        if (withGear) {
+        if (s.widgetShowGear) {
             val sr = RectF(x, r.top, x + slot, r.bottom)
             gear(sr, ink)
             addHit(sr, HitType.GEAR)
@@ -667,7 +669,7 @@ private class Painter(
         val nextRect = RectF(rx, r.top, rx + slot, r.bottom)
         chevron(nextRect, false, ink)
         addHit(nextRect, HitType.NEXT)
-        if (s.showLock) {
+        if (s.widgetShowLock && s.showLock) {
             rx -= slot
             val sr = RectF(rx, r.top, rx + slot, r.bottom)
             lock(sr, ink)
