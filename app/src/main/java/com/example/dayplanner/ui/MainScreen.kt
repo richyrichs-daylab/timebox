@@ -69,9 +69,12 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.Constraints
@@ -449,6 +452,8 @@ private fun Header(
     val skin = LocalSkin.current
     val ink = skin.ink
     val chip = skin.chip
+    val dateLabel = stringResource(R.string.cd_date)
+    val lockState = stringResource(if (lockActive) R.string.a11y_active else R.string.a11y_inactive)
 
     // Datum IMMER mittig: links und rechts wird gleich viel Platz reserviert.
     val slot = 44
@@ -480,13 +485,16 @@ private fun Header(
                 .padding(horizontal = side)
                 .fillMaxSize()
                 .then(if (chip != null) Modifier.padding(vertical = 3.dp).background(chip) else Modifier)
-                .semantics { contentDescription = dateText; role = Role.Button }
-                .tapOrHold(onDate),
+                .tapOrHold(onDate)
+                .clearAndSetSemantics {
+                    contentDescription = "$dateLabel: $dateText"
+                    role = Role.Button
+                },
         )
 
         Row(Modifier.align(Alignment.CenterEnd)) {
             if (s.showLock) {
-                IconSlot(stringResource(R.string.cd_lock), onToggleLock) {
+                IconSlot(stringResource(R.string.cd_lock), onToggleLock, lockState) {
                     LockIcon(locked = lockActive, color = ink, modifier = Modifier.size(30.dp))
                 }
             }
@@ -503,11 +511,20 @@ private fun Header(
 }
 
 @Composable
-private fun IconSlot(description: String, onAction: () -> Unit, content: @Composable () -> Unit) {
+private fun IconSlot(
+    description: String,
+    onAction: () -> Unit,
+    state: String? = null,
+    content: @Composable () -> Unit,
+) {
     Box(
         Modifier
             .size(44.dp)
-            .semantics { contentDescription = description; role = Role.Button }
+            .semantics {
+                contentDescription = description
+                role = Role.Button
+                if (state != null) stateDescription = state
+            }
             .tapOrHold(onAction),
         contentAlignment = Alignment.Center,
     ) { content() }
@@ -531,7 +548,7 @@ private fun AutoSizeText(text: String, color: Color, modifier: Modifier) {
     }
 }
 
-/** Titel über den Feldern. index: 0 Prioritäten, 1 Braindump, 2 Timebox. */
+/** Titel über den Feldern (für Screenreader Überschriften). index: 0 Prioritäten, 1 Braindump, 2 Timebox. */
 @Composable
 private fun SectionTitle(text: String, index: Int) {
     val skin = LocalSkin.current
@@ -544,7 +561,8 @@ private fun SectionTitle(text: String, index: Int) {
         1 -> Box(
             Modifier
                 .fillMaxWidth()
-                .height(TitleHeight),
+                .height(TitleHeight)
+                .semantics(mergeDescendants = true) { heading() },
             contentAlignment = Alignment.Center,
         ) {
             Box(
@@ -566,6 +584,7 @@ private fun SectionTitle(text: String, index: Int) {
                 Modifier
                     .fillMaxWidth()
                     .height(TitleHeight)
+                    .semantics(mergeDescendants = true) { heading() }
             ) {
                 Box(
                     Modifier
@@ -592,7 +611,8 @@ private fun SectionTitle(text: String, index: Int) {
         else -> Box(
             Modifier
                 .fillMaxWidth()
-                .height(TitleHeight),
+                .height(TitleHeight)
+                .semantics(mergeDescendants = true) { heading() },
             contentAlignment = Alignment.Center,
         ) {
             Text(
@@ -647,6 +667,7 @@ private fun PrioritiesBox(
                 handleKind = 0,
                 handleKey = i,
                 onActive = onActive,
+                label = stringResource(R.string.a11y_priority, i + 1),
             )
         }
     }
@@ -697,6 +718,13 @@ private fun TimeRow(
     val state = rowState(day.date, s.dayStart, i, now)
     val gray = s.grayPast && state < 0
     val highlight = s.highlightNow && state == 0
+    val nowWord = stringResource(R.string.a11y_now)
+    val pastWord = stringResource(R.string.a11y_past)
+    val statusWord = when {
+        highlight -> nowWord
+        gray -> pastWord
+        else -> ""
+    }
 
     // Hat das Design eine eigene Hervorhebung (z. B. pinke Stundenzelle), färbt sie nur die Stundenzelle.
     val hl = skin.hourHighlight
@@ -718,11 +746,13 @@ private fun TimeRow(
                 }
             )
     ) {
+        // Die Stundenzahl ist für Screenreader überflüssig: Jede Zelle nennt ihre Uhrzeit selbst.
         Box(
             Modifier
                 .width(40.dp)
                 .fillMaxHeight()
-                .background(hourBg),
+                .background(hourBg)
+                .clearAndSetSemantics { },
             contentAlignment = Alignment.Center,
         ) {
             Text(
@@ -751,6 +781,8 @@ private fun TimeRow(
                 handleKind = 1,
                 handleKey = cellKey,
                 onActive = onActive,
+                label = stringResource(R.string.a11y_timebox_cell, "%d:%02d".format(hour, c * 30)),
+                status = statusWord,
             )
         }
     }
