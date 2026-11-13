@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="widget_set_interactive">interaktiv</string>
+    <string name="dlg_folder">Ordnerwahl</string>
 
     <string name="a11y_active">aktiv</string>
     <string name="a11y_inactive">inaktiv</string>
@@ -25,6 +26,8 @@
     <string name="a11y_keep_count">Anzahl der zu behaltenden Backups</string>
     <string name="a11y_keep_all">Alle Backups behalten</string>
     <string name="a11y_widget_none">Keine Einträge</string>
+    <string name="a11y_widget_gear">Zahnrad im Seiten-Widget anzeigen</string>
+    <string name="a11y_widget_lock">Schloss im Seiten-Widget anzeigen</string>
 
     <string name="cd_prev_month">Voriger Monat</string>
     <string name="cd_next_month">Nächster Monat</string>
@@ -39,6 +42,5 @@
     <string name="widget_desc_prios">Zeigt deine Prioritäten für heute, auch leere Felder. Tippe auf ein Feld, um es zu bearbeiten.</string>
     <string name="widget_desc_braindump">Zeigt das heutige Braindump. Tippen zum Bearbeiten.</string>
     <string name="widget_desc_timebox">Zeigt die heutige Stunden-Timebox. Tippe auf eine Zelle, um sie zu bearbeiten.</string>
-    <string name="widget_desc_page">Zeigt den ganzen Tag mit Pfeilen, Schloss und Einstellungen. Tippe auf ein Feld, um es zu bearbeiten.</string>
-    <string name="widget_desc_page_nogear">Zeigt den ganzen Tag mit Pfeilen und Schloss, ohne Zahnrad.</string>
+    <string name="widget_desc_page">Zeigt den ganzen Tag. Zahnrad und Schloss lassen sich in den Einstellungen ein- und ausschalten. Tippe auf ein Feld, um es zu bearbeiten.</string>
 </resources>
