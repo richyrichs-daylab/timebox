@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_set_interactive">interactive</string>
+
+    <string name="a11y_active">active</string>
+    <string name="a11y_inactive">inactive</string>
+    <string name="a11y_priority">Priority %1$d</string>
+    <string name="a11y_timebox_cell">Timebox %1$s</string>
+    <string name="a11y_empty">empty</string>
+    <string name="a11y_struck">struck through</string>
+    <string name="a11y_locked">locked</string>
+    <string name="a11y_now">current hour</string>
+    <string name="a11y_past">past hour</string>
+    <string name="a11y_strike">Strike through</string>
+    <string name="a11y_has_drawing">contains a drawing</string>
+    <string name="a11y_drawing_area">Drawing area</string>
+    <string name="a11y_today">today</string>
+    <string name="a11y_reset_time">Unlock time lock</string>
+    <string name="a11y_reset_day">Unlock day lock</string>
+    <string name="a11y_donate">Support the developer, opens a link</string>
+    <string name="a11y_designs">More individual designs, opens a link</string>
+    <string name="a11y_digits_entered">Digits entered: %1$d</string>
+    <string name="a11y_password">Password</string>
+    <string name="a11y_interval_count">Interval count</string>
+    <string name="a11y_keep_count">Number of backups to keep</string>
+    <string name="a11y_keep_all">Keep all backups</string>
+    <string name="a11y_widget_none">No entries</string>
+
+    <string name="cd_prev_month">Previous month</string>
+    <string name="cd_next_month">Next month</string>
+
+    <string name="design_standard">Standard</string>
+    <string name="design_grunge">Black and white grunge</string>
+    <string name="design_candy">Candy checkerboard</string>
+    <string name="design_chrome">Chrome sky</string>
+    <string name="design_gold">Gold</string>
+    <string name="design_neon">Neon</string>
+
+    <string name="widget_desc_prios">Shows your priorities for today, including empty fields. Tap a field to edit it.</string>
+    <string name="widget_desc_braindump">Shows today’s braindump. Tap it to edit.</string>
+    <string name="widget_desc_timebox">Shows today’s hourly timebox. Tap a cell to edit it.</string>
+    <string name="widget_desc_page">Shows the whole day with arrows, lock and settings. Tap a field to edit it.</string>
+    <string name="widget_desc_page_nogear">Shows the whole day with arrows and lock, without the settings gear.</string>
+</resources>
