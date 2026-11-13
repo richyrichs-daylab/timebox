@@ -13,9 +13,21 @@ import org.json.JSONObject
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileNotFoundException
+import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
 
-class CustomEntry(val id: String, val name: String, val skin: Skin)
+class CustomEntry(
+    val id: String,
+    val name: String,
+    val skin: Skin,
+    val names: Map<String, String> = emptyMap(),
+) {
+    /** Name für Screenreader in der Systemsprache, sonst Englisch, sonst der Wert "name". */
+    fun displayName(): String {
+        val lang = Locale.getDefault().language
+        return names[lang] ?: names["en"] ?: name
+    }
+}
 
 /**
  * Importierte Design-Dateien (reine Daten, kein Code). Format: JSON mit
@@ -77,6 +89,15 @@ object CustomDesigns {
         require(ID_REGEX.matches(id))
         val name = o.optString("name", id).take(40)
 
+        val names = HashMap<String, String>()
+        val namesObj = o.optJSONObject("names")
+        if (namesObj != null) {
+            namesObj.keys().forEach { k ->
+                val v = namesObj.optString(k, "").take(40)
+                if (v.isNotBlank()) names[k.lowercase()] = v
+            }
+        }
+
         fun col(key: String): Color? =
             o.optString(key, "").takeIf { it.isNotEmpty() }?.let { colorOf(it) }
 
@@ -131,7 +152,7 @@ object CustomDesigns {
             hourHighlight = col("hourHighlight"),
             customId = id,
         )
-        CustomEntry(id, name, skin)
+        CustomEntry(id, name, skin, names)
     } catch (e: Exception) {
         null
     }
