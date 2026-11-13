@@ -22,7 +22,7 @@ private val Context.settingsStore by preferencesDataStore(name = "settings")
 
 /**
  * forBackup = true lässt geräte- und sicherheitsbezogene Werte weg
- * (laufende Sperre, automatisches Backup, Backup-Passwort).
+ * (laufende Sperre, automatisches Backup samt Ordner, Backup-Passwort).
  */
 fun Settings.toJson(forBackup: Boolean = false): JSONObject {
     val o = JSONObject()
@@ -32,6 +32,7 @@ fun Settings.toJson(forBackup: Boolean = false): JSONObject {
         .put("rows", rows)
         .put("columns", columns)
         .put("dayStart", dayStart)
+        .put("timeboxHistory", JSONObject(timeboxHistory as Map<*, *>))
         .put("priorities", priorities)
         .put("priorityHistory", JSONObject(priorityHistory as Map<*, *>))
         .put("showPrioritiesTitle", showPrioritiesTitle)
@@ -54,6 +55,8 @@ fun Settings.toJson(forBackup: Boolean = false): JSONObject {
         .put("widgetPrios", widgetPrios)
         .put("widgetShowEmpty", widgetShowEmpty)
         .put("widgetInteractive", widgetInteractive)
+        .put("widgetShowGear", widgetShowGear)
+        .put("widgetShowLock", widgetShowLock)
         .put("allowRelease", allowRelease)
         .put("dailyBraindump", dailyBraindump)
     if (!forBackup) {
@@ -63,6 +66,7 @@ fun Settings.toJson(forBackup: Boolean = false): JSONObject {
             .put("autoBackupN", autoBackupN)
             .put("autoBackupUnit", autoBackupUnit)
             .put("autoBackupKeep", autoBackupKeep)
+            .put("autoBackupTree", autoBackupTree)
             .put("lastBackup", lastBackup)
             .put("dailyFilledUntil", dailyFilledUntil)
             .put("backupSalt", backupSalt)
@@ -76,6 +80,9 @@ fun settingsFromJson(o: JSONObject): Settings {
     val history = o.optJSONObject("priorityHistory")?.let { h ->
         h.keys().asSequence().associateWith { h.optInt(it, d.priorities) }
     } ?: emptyMap()
+    val timebox = o.optJSONObject("timeboxHistory")?.let { h ->
+        h.keys().asSequence().associateWith { h.optString(it, "") }
+    } ?: emptyMap()
     return Settings(
         showLeftArrow = o.optBoolean("showLeftArrow", d.showLeftArrow),
         showLock = o.optBoolean("showLock", d.showLock),
@@ -83,6 +90,7 @@ fun settingsFromJson(o: JSONObject): Settings {
         rows = o.optInt("rows", d.rows),
         columns = o.optInt("columns", d.columns),
         dayStart = o.optInt("dayStart", d.dayStart),
+        timeboxHistory = timebox,
         priorities = o.optInt("priorities", d.priorities),
         priorityHistory = history,
         showPrioritiesTitle = o.optBoolean("showPrioritiesTitle", d.showPrioritiesTitle),
@@ -105,6 +113,8 @@ fun settingsFromJson(o: JSONObject): Settings {
         widgetPrios = o.optInt("widgetPrios", d.widgetPrios),
         widgetShowEmpty = o.optBoolean("widgetShowEmpty", d.widgetShowEmpty),
         widgetInteractive = o.optBoolean("widgetInteractive", d.widgetInteractive),
+        widgetShowGear = o.optBoolean("widgetShowGear", d.widgetShowGear),
+        widgetShowLock = o.optBoolean("widgetShowLock", d.widgetShowLock),
         allowRelease = o.optBoolean("allowRelease", d.allowRelease),
         lockUntil = o.optLong("lockUntil", d.lockUntil),
         lockReleasable = o.optBoolean("lockReleasable", d.lockReleasable),
@@ -112,6 +122,7 @@ fun settingsFromJson(o: JSONObject): Settings {
         autoBackupN = o.optInt("autoBackupN", d.autoBackupN),
         autoBackupUnit = o.optInt("autoBackupUnit", d.autoBackupUnit),
         autoBackupKeep = o.optInt("autoBackupKeep", d.autoBackupKeep),
+        autoBackupTree = o.optString("autoBackupTree", d.autoBackupTree),
         lastBackup = o.optString("lastBackup", d.lastBackup),
         dailyBraindump = o.optString("dailyBraindump", d.dailyBraindump),
         dailyFilledUntil = o.optString("dailyFilledUntil", d.dailyFilledUntil),
@@ -128,6 +139,7 @@ fun Settings.keepRuntimeFrom(cur: Settings): Settings = copy(
     autoBackupN = cur.autoBackupN,
     autoBackupUnit = cur.autoBackupUnit,
     autoBackupKeep = cur.autoBackupKeep,
+    autoBackupTree = cur.autoBackupTree,
     lastBackup = cur.lastBackup,
     dailyFilledUntil = cur.dailyFilledUntil,
     backupSalt = cur.backupSalt,
