@@ -18,23 +18,35 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-/** Farbiger Balken mit gestrichelter Umrandung in eigener Farbe. */
+/**
+ * Farbiger Balken mit gestrichelter Umrandung in eigener Farbe.
+ * description: Text für Screenreader (ohne Emojis, mit dem Hinweis auf den Link).
+ */
 @Composable
 fun PromoButton(
     text: String,
     fill: Color,
     dash: Color,
+    description: String,
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
     Box(
         modifier
             .tapOrHold(onClick)
+            .clearAndSetSemantics {
+                contentDescription = description
+                role = Role.Button
+            }
             .drawBehind {
                 val sw = 2.dp.toPx()
                 drawRoundRect(
