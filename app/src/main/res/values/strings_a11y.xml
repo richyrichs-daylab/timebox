@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="widget_set_interactive">interactive</string>
+    <string name="dlg_folder">Choose folder</string>
 
     <string name="a11y_active">active</string>
     <string name="a11y_inactive">inactive</string>
@@ -25,6 +26,8 @@
     <string name="a11y_keep_count">Number of backups to keep</string>
     <string name="a11y_keep_all">Keep all backups</string>
     <string name="a11y_widget_none">No entries</string>
+    <string name="a11y_widget_gear">Show settings gear in the page widget</string>
+    <string name="a11y_widget_lock">Show lock in the page widget</string>
 
     <string name="cd_prev_month">Previous month</string>
     <string name="cd_next_month">Next month</string>
@@ -39,6 +42,5 @@
     <string name="widget_desc_prios">Shows your priorities for today, including empty fields. Tap a field to edit it.</string>
     <string name="widget_desc_braindump">Shows today’s braindump. Tap it to edit.</string>
     <string name="widget_desc_timebox">Shows today’s hourly timebox. Tap a cell to edit it.</string>
-    <string name="widget_desc_page">Shows the whole day with arrows, lock and settings. Tap a field to edit it.</string>
-    <string name="widget_desc_page_nogear">Shows the whole day with arrows and lock, without the settings gear.</string>
+    <string name="widget_desc_page">Shows the whole day. The settings gear and the lock can be switched on or off in the settings. Tap a field to edit it.</string>
 </resources>
