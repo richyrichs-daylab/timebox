@@ -18,7 +18,7 @@ import com.example.dayplanner.wallpaper.TimeboxWallpaperService
 import java.time.LocalDate
 import kotlin.math.roundToInt
 
-enum class WidgetKind { PRIOS, BRAINDUMP, TIMEBOX, PAGE, PAGE_NOGEAR }
+enum class WidgetKind { PRIOS, BRAINDUMP, TIMEBOX, PAGE }
 
 object WidgetUpdater {
 
@@ -29,7 +29,6 @@ object WidgetUpdater {
         WidgetKind.BRAINDUMP to WidgetBraindumpProvider::class.java,
         WidgetKind.TIMEBOX to WidgetTimeboxProvider::class.java,
         WidgetKind.PAGE to WidgetPageProvider::class.java,
-        WidgetKind.PAGE_NOGEAR to WidgetPageNoGearProvider::class.java,
     )
 
     /** Welche Art von Widget gehört zu dieser Widget-ID? */
@@ -64,11 +63,11 @@ object WidgetUpdater {
         val repo = DayRepository(app)
         val today = LocalDate.now()
         val density = app.resources.displayMetrics.density
-        val navigable = kind == WidgetKind.PAGE || kind == WidgetKind.PAGE_NOGEAR
+        val navigable = kind == WidgetKind.PAGE
         val interactive = s.widgetInteractive
 
         for (id in ids) {
-            // Nur die Seiten-Widgets lassen sich mit den Pfeilen durch die Tage blättern.
+            // Nur das Seiten-Widget lässt sich mit den Pfeilen durch die Tage blättern.
             val date = if (navigable) today.plusDays(WidgetState.offset(app, id).toLong()) else today
             val snap = WidgetSnapshot(s, repo.load(date), date)
             val (w, h) = sizeDp(app, manager, id)
@@ -151,13 +150,13 @@ object WidgetUpdater {
                 WidgetKind.PRIOS -> R.string.widget_prios
                 WidgetKind.BRAINDUMP -> R.string.widget_braindump
                 WidgetKind.TIMEBOX -> R.string.widget_timebox
-                WidgetKind.PAGE, WidgetKind.PAGE_NOGEAR -> R.string.app_name
+                WidgetKind.PAGE -> R.string.app_name
             }
         )
         val title = kindLabel + ", " + formatDate(snap.date, s.dateFormat)
         if (!full) return title
 
-        val page = kind == WidgetKind.PAGE || kind == WidgetKind.PAGE_NOGEAR
+        val page = kind == WidgetKind.PAGE
         val parts = ArrayList<String>()
         parts.add(title)
         if (kind == WidgetKind.PRIOS || page) {
@@ -167,8 +166,9 @@ object WidgetUpdater {
             }
         }
         if (kind == WidgetKind.TIMEBOX || page) {
-            for (i in 0 until s.rows) {
-                val hour = (s.dayStart + i) % 24
+            val dayStart = s.dayStartFor(snap.date)
+            for (i in 0 until s.rowsFor(snap.date)) {
+                val hour = (dayStart + i) % 24
                 for (c in 0 until s.columns) {
                     val key = hour * 2 + c
                     val t = d.timebox[key].orEmpty()
