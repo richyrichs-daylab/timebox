@@ -11,9 +11,10 @@ data class Settings(
     val showLeftArrow: Boolean = true,
     val showLock: Boolean = true,
     val dateFormat: Int = 1,              // 1..4
-    val rows: Int = 18,                   // 1..24
+    val rows: Int = 18,                   // 1..24 (aktueller Wert)
     val columns: Int = 1,                 // 1 = :00, 2 = :00 + :30
-    val dayStart: Int = 6,                // 0..23
+    val dayStart: Int = 6,                // 0..23 (aktueller Wert)
+    val timeboxHistory: Map<String, String> = emptyMap(), // ab Datum: "Tagesbeginn,Zeilen"
     val priorities: Int = 3,              // 1..10 (aktueller Wert)
     val priorityHistory: Map<String, Int> = emptyMap(),
     val showPrioritiesTitle: Boolean = true,
@@ -36,6 +37,8 @@ data class Settings(
     val widgetPrios: Int = 0,             // in Widgets angezeigte Prioritäten, 0 = so viele wie oben (folgt automatisch)
     val widgetShowEmpty: Boolean = true,  // leere Prioritäten-Felder in Widgets anzeigen
     val widgetInteractive: Boolean = true, // Widgets sind bedienbar (Felder, Pfeile, Schloss)
+    val widgetShowGear: Boolean = true,   // Zahnrad im Seiten-Widget
+    val widgetShowLock: Boolean = true,   // Schloss im Seiten-Widget
     val allowRelease: Boolean = true,     // Toggle "Lock-in-Aufhebung"
     val lockUntil: Long = 0L,             // Ende der Zeit-/Tagessperre (Epoch-Millis), 0 = keine
     val lockReleasable: Boolean = true,   // beim Start der Sperre festgehalten
@@ -43,6 +46,7 @@ data class Settings(
     val autoBackupN: Int = 1,
     val autoBackupUnit: Int = 0,          // 0 täglich, 1 wöchentlich, 2 monatlich, 3 jährlich
     val autoBackupKeep: Int = 0,          // wie viele automatische Backups bleiben, 0 = alle
+    val autoBackupTree: String = "",      // gewählter Ordner für automatische Backups, leer = Download/Timebox
     val lastBackup: String = "",          // ISO-Datum
     val dailyBraindump: String = "",      // Vorlage "tägliche Fragen"
     val dailyFilledUntil: String = "",    // ISO-Datum, bis wohin die Vorlage eingetragen ist
@@ -76,6 +80,33 @@ data class Settings(
         val sorted = priorityHistory.toSortedMap()
         val key = date.toString()
         return sorted.entries.lastOrNull { it.key <= key }?.value ?: sorted.values.first()
+    }
+
+    /** Tagesbeginn und Zeilenzahl, die an einem bestimmten Tag gelten (frühere Tage behalten ihre Werte). */
+    private fun timeboxFor(date: LocalDate): Pair<Int, Int> {
+        if (timeboxHistory.isEmpty()) return dayStart to rows
+        val sorted = timeboxHistory.toSortedMap()
+        val key = date.toString()
+        val value = (sorted.entries.lastOrNull { it.key <= key } ?: sorted.entries.first()).value
+        val parts = value.split(",")
+        val start = (parts.getOrNull(0)?.toIntOrNull() ?: dayStart).coerceIn(0, 23)
+        val count = (parts.getOrNull(1)?.toIntOrNull() ?: rows).coerceIn(1, 24)
+        return start to count
+    }
+
+    fun dayStartFor(date: LocalDate): Int = timeboxFor(date).first
+
+    fun rowsFor(date: LocalDate): Int = timeboxFor(date).second
+
+    /** Neuer Tagesbeginn bzw. neue Zeilenzahl gilt ab [today]. Zurückliegende Tage bleiben unverändert. */
+    fun withTimebox(start: Int, count: Int, today: LocalDate): Settings {
+        val newStart = start.coerceIn(0, 23)
+        val newRows = count.coerceIn(1, 24)
+        if (newStart == dayStart && newRows == rows) return this
+        val history = timeboxHistory.toMutableMap()
+        if (history.isEmpty()) history[EPOCH] = "$dayStart,$rows"
+        history[today.toString()] = "$newStart,$newRows"
+        return copy(dayStart = newStart, rows = newRows, timeboxHistory = history)
     }
 
     /** Anzahl der in Widgets angezeigten Prioritäten für einen Tag (höchstens die Anzahl dieses Tages). */
