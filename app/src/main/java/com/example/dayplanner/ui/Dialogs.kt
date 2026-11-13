@@ -190,6 +190,7 @@ private fun NumberList(range: IntRange, value: Int, unitLabel: String, onSelect:
 
 /**
  * Intervall und Aufbewahrung der automatischen Backups.
+ * Der rechte Button heißt „Ordnerwahl": Die Oberfläche öffnet danach den Ordnerdialog.
  * keep in onConfirm: 0 = alle Backups behalten, sonst die Anzahl.
  */
 @Composable
@@ -396,7 +397,7 @@ fun AutoBackupDialog(
         Spacer(Modifier.height(16.dp))
         DialogButtons(
             cancel = stringResource(R.string.dlg_cancel),
-            confirm = stringResource(R.string.dlg_confirm),
+            confirm = stringResource(R.string.dlg_folder),
             confirmEnabled = (daily || n >= 1) && (keepAll || keepN >= 1),
             onCancel = onCancel,
             onConfirm = { onConfirm(if (daily) 1 else n, unit, if (keepAll) 0 else keepN) },
