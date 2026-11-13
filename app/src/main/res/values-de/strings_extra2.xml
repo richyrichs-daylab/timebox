@@ -8,6 +8,6 @@
     <string name="wallpaper_set">Live-Hintergrund festlegen</string>
     <string name="wallpaper_label">Timebox-Tag</string>
     <string name="wallpaper_description">Zeigt deinen aktuellen Tag als Live-Hintergrund.</string>
-    <string name="keep_title">Wieviele Backups behalten?</string>
+    <string name="keep_title">Wie viele Backups behalten?</string>
     <string name="keep_all">alle</string>
 </resources>
