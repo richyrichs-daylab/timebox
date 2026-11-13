@@ -45,6 +45,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -79,7 +80,9 @@ import androidx.core.content.ContextCompat
 import com.example.dayplanner.R
 import com.example.dayplanner.data.Design
 import com.example.dayplanner.data.PasswordInfo
+import com.example.dayplanner.data.SettingsRepository
 import com.example.dayplanner.wallpaper.TimeboxWallpaperService
+import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -100,6 +103,7 @@ fun SettingsScreen(vm: PlannerViewModel, onBack: () -> Unit) {
     val focus = LocalFocusManager.current
     val context = LocalContext.current
     val uriHandler = LocalUriHandler.current
+    val scope = rememberCoroutineScope()
     val systemDark = isSystemInDarkTheme()
 
     val now = rememberNow(s.lockUntil)
@@ -116,6 +120,8 @@ fun SettingsScreen(vm: PlannerViewModel, onBack: () -> Unit) {
     var showDaily by remember { mutableStateOf(false) }
     var showBackupPw by remember { mutableStateOf(false) }
     var pendingImport by remember { mutableStateOf<Uri?>(null) }
+    // Intervall, Aufbewahrung und Anzahl, solange der Ordnerdialog offen ist
+    var pendingAuto by remember { mutableStateOf<Triple<Int, Int, Int>?>(null) }
 
     val preview = formatDate(LocalDate.now(), s.dateFormat)
     val modeName = stringResource(
@@ -179,6 +185,29 @@ fun SettingsScreen(vm: PlannerViewModel, onBack: () -> Unit) {
     ) { uri ->
         if (uri != null) {
             vm.importDesign(uri) { ok -> toast(if (ok) R.string.design_import_ok else R.string.design_import_failed) }
+        }
+    }
+    // Ordnerwahl für die automatischen Backups: Erst nach der Bestätigung eines Ordners
+    // werden die Einstellungen gespeichert und das erste Backup entsteht dort.
+    val folderLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocumentTree()
+    ) { uri ->
+        val pending = pendingAuto
+        if (uri != null && pending != null) {
+            runCatching {
+                context.contentResolver.takePersistableUriPermission(
+                    uri,
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION,
+                )
+            }
+            showAuto = false
+            pendingAuto = null
+            scope.launch {
+                SettingsRepository(context).update { it.copy(autoBackupTree = uri.toString()) }
+                vm.enableAutoBackup(pending.first, pending.second, pending.third) { ok ->
+                    toast(if (ok) R.string.backup_auto_on else R.string.backup_failed)
+                }
+            }
         }
     }
     val notifPermission = rememberLauncherForActivityResult(
@@ -261,16 +290,22 @@ fun SettingsScreen(vm: PlannerViewModel, onBack: () -> Unit) {
                             vm.updateSettings { it.copy(dateFormat = it.dateFormat % 4 + 1) }
                         }
                     }
+                    // Zeilenzahl: gilt ab heute, frühere Tage behalten ihren Wert.
                     SettingRow(stringResource(R.string.set_rows)) {
-                        NumberBox(s.rows, 1..24) { v -> vm.updateSettings { it.copy(rows = v) } }
+                        NumberBox(s.rows, 1..24) { v ->
+                            vm.updateSettings { it.withTimebox(it.dayStart, v, LocalDate.now()) }
+                        }
                     }
                     SettingRow(stringResource(R.string.set_columns)) {
                         SquareButton(s.columns.toString()) {
                             vm.updateSettings { it.copy(columns = it.columns % 2 + 1) }
                         }
                     }
+                    // Tagesbeginn: gilt ab heute, frühere Tage behalten ihren Wert.
                     SettingRow(stringResource(R.string.set_day_start)) {
-                        NumberBox(s.dayStart, 0..23) { v -> vm.updateSettings { it.copy(dayStart = v) } }
+                        NumberBox(s.dayStart, 0..23) { v ->
+                            vm.updateSettings { it.withTimebox(v, it.rows, LocalDate.now()) }
+                        }
                     }
                     SettingRow(stringResource(R.string.set_mode, modeName)) {
                         Box(
@@ -346,18 +381,36 @@ fun SettingsScreen(vm: PlannerViewModel, onBack: () -> Unit) {
             )
             Spacer(Modifier.height(12.dp))
             Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                // Angezeigte Prioritäten, daneben der Zahnrad-Schalter für das Seiten-Widget.
                 // Höchstens so viele wie oben eingestellt. Steht das Feld auf dem Maximum,
                 // wächst es mit, wenn oben die Prioritäten erhöht werden.
-                SettingRow(stringResource(R.string.widget_set_prios)) {
-                    NumberBox(s.widgetPriosEffective, 1..s.priorities) { v ->
-                        vm.updateSettings { it.copy(widgetPrios = if (v >= it.priorities) 0 else v) }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    SettingRow(stringResource(R.string.widget_set_prios), Modifier.weight(1f)) {
+                        NumberBox(s.widgetPriosEffective, 1..s.priorities) { v ->
+                            vm.updateSettings { it.copy(widgetPrios = if (v >= it.priorities) 0 else v) }
+                        }
                     }
+                    IconSwitch(
+                        description = stringResource(R.string.a11y_widget_gear),
+                        checked = s.widgetShowGear,
+                        icon = { GearIcon(color = ink, modifier = Modifier.size(24.dp)) },
+                    ) { v -> vm.updateSettings { it.copy(widgetShowGear = v) } }
                 }
-                SettingRow(stringResource(R.string.widget_set_empty)) {
-                    SquareButton(
-                        text = stringResource(if (s.widgetShowEmpty) R.string.answer_yes else R.string.answer_no),
-                        fontSize = 14.sp,
-                    ) { vm.updateSettings { it.copy(widgetShowEmpty = !it.widgetShowEmpty) } }
+                // Leere Felder, darunter der Schloss-Schalter. Das Schloss erscheint nur,
+                // wenn auch das Schloss-Symbol der Hauptseite an ist.
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    SettingRow(stringResource(R.string.widget_set_empty), Modifier.weight(1f)) {
+                        SquareButton(
+                            text = stringResource(if (s.widgetShowEmpty) R.string.answer_yes else R.string.answer_no),
+                            fontSize = 14.sp,
+                        ) { vm.updateSettings { it.copy(widgetShowEmpty = !it.widgetShowEmpty) } }
+                    }
+                    IconSwitch(
+                        description = stringResource(R.string.a11y_widget_lock),
+                        checked = s.widgetShowLock,
+                        enabled = s.showLock,
+                        icon = { LockIcon(locked = false, color = ink, modifier = Modifier.size(24.dp)) },
+                    ) { v -> vm.updateSettings { it.copy(widgetShowLock = v) } }
                 }
                 // Aus: Ein Tipp irgendwo im Widget öffnet nur die App (das Zahnrad führt weiter zu den Einstellungen).
                 SettingRow(stringResource(R.string.widget_set_interactive)) {
@@ -671,17 +724,19 @@ fun SettingsScreen(vm: PlannerViewModel, onBack: () -> Unit) {
             initialN = s.autoBackupN,
             initialUnit = s.autoBackupUnit,
             initialKeep = s.autoBackupKeep,
-            onCancel = { showAuto = false },
+            onCancel = {
+                showAuto = false
+                pendingAuto = null
+            },
             onDisable = {
                 showAuto = false
                 vm.disableAutoBackup()
                 toast(R.string.backup_auto_off)
             },
+            // „Ordnerwahl": Der Ordnerdialog öffnet sich, das Fenster bleibt bis zur Bestätigung offen.
             onConfirm = { n, unit, keep ->
-                showAuto = false
-                vm.enableAutoBackup(n, unit, keep) { ok ->
-                    toast(if (ok) R.string.backup_auto_on else R.string.backup_failed)
-                }
+                pendingAuto = Triple(n, unit, keep)
+                folderLauncher.launch(null)
             },
         )
     }
@@ -702,10 +757,10 @@ private fun designName(d: Design): String = stringResource(
 
 /** Kasten/Toggle links, Beschriftung rechts dahinter. Für Screenreader eine Einheit. */
 @Composable
-private fun SettingRow(label: String, control: @Composable () -> Unit) {
+private fun SettingRow(label: String, modifier: Modifier = Modifier, control: @Composable () -> Unit) {
     val skin = LocalSkin.current
     Row(
-        Modifier.semantics(mergeDescendants = true) { },
+        modifier.semantics(mergeDescendants = true) { },
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
@@ -715,11 +770,12 @@ private fun SettingRow(label: String, control: @Composable () -> Unit) {
 }
 
 @Composable
-private fun SkinSwitch(checked: Boolean, onChange: (Boolean) -> Unit) {
+private fun SkinSwitch(checked: Boolean, enabled: Boolean = true, onChange: (Boolean) -> Unit) {
     val skin = LocalSkin.current
     Switch(
         checked = checked,
         onCheckedChange = onChange,
+        enabled = enabled,
         colors = SwitchDefaults.colors(
             checkedThumbColor = skin.bg,
             checkedTrackColor = skin.accent,
@@ -729,6 +785,27 @@ private fun SkinSwitch(checked: Boolean, onChange: (Boolean) -> Unit) {
             uncheckedBorderColor = skin.ink,
         ),
     )
+}
+
+/** Schalter mit Symbol statt Beschriftung (z. B. Zahnrad, Schloss). Für Screenreader eine Einheit. */
+@Composable
+private fun IconSwitch(
+    description: String,
+    checked: Boolean,
+    enabled: Boolean = true,
+    icon: @Composable () -> Unit,
+    onChange: (Boolean) -> Unit,
+) {
+    Row(
+        Modifier
+            .alpha(if (enabled) 1f else 0.4f)
+            .semantics(mergeDescendants = true) { contentDescription = description },
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        Box(Modifier.size(26.dp), contentAlignment = Alignment.Center) { icon() }
+        SkinSwitch(checked, enabled, onChange)
+    }
 }
 
 @Composable
