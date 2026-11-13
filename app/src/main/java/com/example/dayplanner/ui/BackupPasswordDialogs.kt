@@ -22,6 +22,9 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -36,6 +39,7 @@ import com.example.dayplanner.R
 @Composable
 private fun SecretField(
     value: String,
+    label: String,
     onChange: (String) -> Unit,
     onDone: () -> Unit,
     focus: FocusRequester,
@@ -60,6 +64,7 @@ private fun SecretField(
             keyboardActions = KeyboardActions(onDone = { onDone() }),
             modifier = Modifier
                 .fillMaxWidth()
+                .semantics { contentDescription = label }
                 .focusRequester(focus),
         )
     }
@@ -77,19 +82,22 @@ fun BackupPasswordDialog(
     var text by remember { mutableStateOf("") }
     val valid = text.length >= 4
     val focus = remember { FocusRequester() }
+    val title = stringResource(R.string.backup_pw)
     LaunchedEffect(Unit) { focus.requestFocus() }
 
     DialogFrame(onCancel) {
         Text(
-            stringResource(R.string.backup_pw),
+            title,
             color = skin.ink,
             fontWeight = FontWeight.ExtraBold,
             fontSize = 18.sp,
             textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .semantics { heading() },
         )
         Spacer(Modifier.height(12.dp))
-        SecretField(text, { text = it }, { if (valid) onConfirm(text) }, focus)
+        SecretField(text, title, { text = it }, { if (valid) onConfirm(text) }, focus)
         Spacer(Modifier.height(8.dp))
         Text(stringResource(R.string.pw_hint_min), color = skin.ink, fontSize = 13.sp)
         Spacer(Modifier.height(14.dp))
@@ -112,19 +120,22 @@ fun BackupImportPasswordDialog(onCancel: () -> Unit, onConfirm: (String) -> Unit
     var text by remember { mutableStateOf("") }
     val valid = text.isNotEmpty()
     val focus = remember { FocusRequester() }
+    val title = stringResource(R.string.backup_pw_enter)
     LaunchedEffect(Unit) { focus.requestFocus() }
 
     DialogFrame(onCancel) {
         Text(
-            stringResource(R.string.backup_pw_enter),
+            title,
             color = skin.ink,
             fontWeight = FontWeight.ExtraBold,
             fontSize = 18.sp,
             textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .semantics { heading() },
         )
         Spacer(Modifier.height(12.dp))
-        SecretField(text, { text = it }, { if (valid) onConfirm(text) }, focus)
+        SecretField(text, title, { text = it }, { if (valid) onConfirm(text) }, focus)
         Spacer(Modifier.height(14.dp))
         DialogButtons(
             cancel = stringResource(R.string.dlg_cancel),
