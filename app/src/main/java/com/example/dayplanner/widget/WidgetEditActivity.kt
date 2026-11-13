@@ -29,6 +29,9 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -102,8 +105,11 @@ private fun EditRoot(type: Int, key: Int, date: LocalDate, onClose: () -> Unit) 
             else -> loaded.day.braindump
         }
         val title = when (type) {
-            HitType.PRIO -> stringResource(R.string.priorities) + " " + (key + 1)
-            HitType.TIME -> (key / 2).toString() + ":" + (if (key % 2 == 1) "30" else "00")
+            HitType.PRIO -> stringResource(R.string.a11y_priority, key + 1)
+            HitType.TIME -> stringResource(
+                R.string.a11y_timebox_cell,
+                "%d:%02d".format(key / 2, if (key % 2 == 1) 30 else 0),
+            )
             else -> stringResource(R.string.braindump)
         }
         EditDialog(
@@ -160,7 +166,9 @@ private fun EditDialog(
             fontWeight = FontWeight.ExtraBold,
             fontSize = 18.sp,
             textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .semantics { heading() },
         )
         Spacer(Modifier.height(12.dp))
         Box(
@@ -192,6 +200,7 @@ private fun EditDialog(
                 modifier = Modifier
                     .fillMaxWidth()
                     .then(if (singleLine) Modifier else Modifier.fillMaxHeight())
+                    .semantics { contentDescription = title }
                     .focusRequester(focus),
             )
         }
