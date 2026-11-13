@@ -13,6 +13,7 @@ import com.example.dayplanner.R
 import com.example.dayplanner.data.DayRepository
 import com.example.dayplanner.data.Settings
 import com.example.dayplanner.data.SettingsRepository
+import com.example.dayplanner.ui.formatDate
 import com.example.dayplanner.wallpaper.TimeboxWallpaperService
 import java.time.LocalDate
 import kotlin.math.roundToInt
@@ -64,6 +65,7 @@ object WidgetUpdater {
         val today = LocalDate.now()
         val density = app.resources.displayMetrics.density
         val navigable = kind == WidgetKind.PAGE || kind == WidgetKind.PAGE_NOGEAR
+        val interactive = s.widgetInteractive
 
         for (id in ids) {
             // Nur die Seiten-Widgets lassen sich mit den Pfeilen durch die Tage blättern.
@@ -75,10 +77,15 @@ object WidgetUpdater {
             val views = RemoteViews(app.packageName, R.layout.widget_planner)
             views.setImageViewBitmap(R.id.widget_image, image.bitmap)
             views.setOnClickPendingIntent(R.id.widget_root, appIntent(app, id, "app", false))
+            // Interaktiv: Name und Datum, die Felder beschriften sich selbst.
+            // Nicht interaktiv: der ganze Inhalt für den Screenreader.
+            views.setContentDescription(R.id.widget_root, summary(app, kind, snap, full = !interactive))
 
             // Antippbare Flächen über dem Bild: je Feld und Symbol ein eigenes Rechteck.
+            // Ist "interaktiv" aus, bleibt nur das Zahnrad.
             views.removeAllViews(R.id.hit_container)
-            for (hit in image.hits) {
+            val hits = if (interactive) image.hits else image.hits.filter { it.type == HitType.GEAR }
+            for (hit in hits) {
                 val child = RemoteViews(app.packageName, R.layout.widget_hit)
                 child.setViewPadding(
                     R.id.hit_outer,
@@ -88,12 +95,97 @@ object WidgetUpdater {
                     ((h - hit.b) * density).roundToInt().coerceAtLeast(0),
                 )
                 child.setOnClickPendingIntent(R.id.hit_inner, hitIntent(app, id, hit, date))
+                child.setContentDescription(R.id.hit_inner, describeHit(app, hit, snap))
                 views.addView(R.id.hit_container, child)
             }
 
             manager.updateAppWidget(id, views)
         }
     }
+
+    // ------------------------------------------------------------ Beschriftungen für Screenreader
+
+    private fun timeLabel(key: Int): String = "%d:%02d".format(key / 2, if (key % 2 == 1) 30 else 0)
+
+    private fun cellDescription(app: Context, label: String, text: String, struck: Boolean): String {
+        val base = if (text.isEmpty()) {
+            "$label, ${app.getString(R.string.a11y_empty)}"
+        } else {
+            "$label: ${text.take(300)}"
+        }
+        return if (struck) base + ", " + app.getString(R.string.a11y_struck) else base
+    }
+
+    /** Beschriftung einer antippbaren Fläche. */
+    private fun describeHit(app: Context, hit: Hit, snap: WidgetSnapshot): String {
+        val d = snap.day
+        return when (hit.type) {
+            HitType.PREV -> app.getString(R.string.cd_prev)
+            HitType.NEXT -> app.getString(R.string.cd_next)
+            HitType.GEAR -> app.getString(R.string.cd_settings)
+            HitType.LOCK -> app.getString(R.string.cd_lock) + ", " +
+                app.getString(if (snap.settings.lockActive) R.string.a11y_active else R.string.a11y_inactive)
+            HitType.PRIO -> cellDescription(
+                app,
+                app.getString(R.string.a11y_priority, hit.key + 1),
+                d.priorities[hit.key].orEmpty(),
+                hit.key in d.strikeP,
+            )
+            HitType.TIME -> cellDescription(
+                app,
+                app.getString(R.string.a11y_timebox_cell, timeLabel(hit.key)),
+                d.timebox[hit.key].orEmpty(),
+                hit.key in d.strikeT,
+            )
+            HitType.BRAIN -> cellDescription(app, app.getString(R.string.braindump), d.braindump, false)
+            else -> ""
+        }
+    }
+
+    /** Name und Datum des Widgets, bei full = true zusätzlich alle gefüllten Einträge. */
+    private fun summary(app: Context, kind: WidgetKind, snap: WidgetSnapshot, full: Boolean): String {
+        val s = snap.settings
+        val d = snap.day
+        val kindLabel = app.getString(
+            when (kind) {
+                WidgetKind.PRIOS -> R.string.widget_prios
+                WidgetKind.BRAINDUMP -> R.string.widget_braindump
+                WidgetKind.TIMEBOX -> R.string.widget_timebox
+                WidgetKind.PAGE, WidgetKind.PAGE_NOGEAR -> R.string.app_name
+            }
+        )
+        val title = kindLabel + ", " + formatDate(snap.date, s.dateFormat)
+        if (!full) return title
+
+        val page = kind == WidgetKind.PAGE || kind == WidgetKind.PAGE_NOGEAR
+        val parts = ArrayList<String>()
+        parts.add(title)
+        if (kind == WidgetKind.PRIOS || page) {
+            for (i in 0 until s.widgetPriosFor(snap.date)) {
+                val t = d.priorities[i].orEmpty()
+                if (t.isNotBlank()) parts.add(app.getString(R.string.a11y_priority, i + 1) + ": " + t.take(300))
+            }
+        }
+        if (kind == WidgetKind.TIMEBOX || page) {
+            for (i in 0 until s.rows) {
+                val hour = (s.dayStart + i) % 24
+                for (c in 0 until s.columns) {
+                    val key = hour * 2 + c
+                    val t = d.timebox[key].orEmpty()
+                    if (t.isNotBlank()) {
+                        parts.add(app.getString(R.string.a11y_timebox_cell, timeLabel(key)) + ": " + t.take(300))
+                    }
+                }
+            }
+        }
+        if ((kind == WidgetKind.BRAINDUMP || page) && d.braindump.isNotBlank()) {
+            parts.add(app.getString(R.string.braindump) + ": " + d.braindump.take(500))
+        }
+        if (parts.size == 1) parts.add(app.getString(R.string.a11y_widget_none))
+        return parts.joinToString(". ")
+    }
+
+    // ------------------------------------------------------------ Aktionen
 
     private fun appIntent(context: Context, id: Int, tag: String, settings: Boolean): PendingIntent {
         val intent = Intent(context, MainActivity::class.java).apply {
