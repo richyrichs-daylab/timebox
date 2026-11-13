@@ -4,11 +4,13 @@ import android.app.AlarmManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import com.example.dayplanner.data.BackupManager
 import com.example.dayplanner.data.BackupRetention
 import com.example.dayplanner.data.Downloads
 import com.example.dayplanner.data.Settings
 import com.example.dayplanner.data.SettingsRepository
+import com.example.dayplanner.data.TreeBackups
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.time.LocalDate
@@ -57,21 +59,36 @@ object AutoBackup {
     }
 
     /**
-     * Schreibt das Backup nach Download/Timebox (mit Backup-Passwort verschlüsselt, falls gesetzt)
-     * und löscht danach die überzähligen eigenen Backups.
+     * Schreibt das Backup in den gewählten Ordner (sonst oder bei einem Fehler nach Download/Timebox),
+     * mit Backup-Passwort verschlüsselt, falls gesetzt. Danach werden die überzähligen eigenen Backups gelöscht.
      */
     suspend fun runNow(context: Context): Boolean = withContext(Dispatchers.IO) {
         try {
             val app = context.applicationContext
+            val repo = SettingsRepository(app)
+            val s = repo.current()
             val today = LocalDate.now()
+            val name = "timebox-backup-$today.json"
             val text = BackupManager.serialize(app, BackupManager.build(app))
-            val ok = Downloads.save(app, "timebox-backup-$today.json", "application/json", "Timebox") { out ->
-                out.write(text.toByteArray(Charsets.UTF_8))
+
+            var ok = false
+            var usedTree = false
+            if (s.autoBackupTree.isNotEmpty()) {
+                ok = TreeBackups.write(app, Uri.parse(s.autoBackupTree), name, text)
+                usedTree = ok
+            }
+            if (!ok) {
+                ok = Downloads.save(app, name, "application/json", "Timebox") { out ->
+                    out.write(text.toByteArray(Charsets.UTF_8))
+                }
             }
             if (ok) {
-                val repo = SettingsRepository(app)
                 repo.update { it.copy(lastBackup = today.toString()) }
-                BackupRetention.apply(app, repo.current().autoBackupKeep)
+                if (usedTree) {
+                    TreeBackups.applyKeep(app, s.autoBackupKeep)
+                } else {
+                    BackupRetention.apply(app, s.autoBackupKeep)
+                }
             }
             ok
         } catch (e: Exception) {
