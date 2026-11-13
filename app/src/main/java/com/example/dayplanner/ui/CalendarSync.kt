@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.provider.CalendarContract
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -14,7 +15,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Text
@@ -30,6 +30,10 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.disabled
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -98,6 +102,7 @@ fun CalendarBar(toEnabled: Boolean, onFrom: () -> Unit, onTo: () -> Unit) {
             Modifier
                 .weight(1f)
                 .fillMaxHeight()
+                .semantics(mergeDescendants = true) { role = Role.Button }
                 .tapOrHold(onFrom),
             contentAlignment = Alignment.Center,
         ) {
@@ -120,6 +125,10 @@ fun CalendarBar(toEnabled: Boolean, onFrom: () -> Unit, onTo: () -> Unit) {
                 .weight(1f)
                 .fillMaxHeight()
                 .alpha(if (toEnabled) 1f else 0.35f)
+                .semantics(mergeDescendants = true) {
+                    role = Role.Button
+                    if (!toEnabled) disabled()
+                }
                 .then(if (toEnabled) Modifier.tapOrHold(onTo) else Modifier),
             contentAlignment = Alignment.Center,
         ) {
@@ -163,6 +172,7 @@ fun EventPickerDialog(date: LocalDate, onPick: (CalEvent) -> Unit, onDismiss: ()
                             Modifier
                                 .fillMaxWidth()
                                 .heightIn(min = 44.dp)
+                                .semantics(mergeDescendants = true) { role = Role.Button }
                                 .tapOrHold { onPick(ev) }
                                 .padding(horizontal = 6.dp),
                             verticalAlignment = Alignment.CenterVertically,
