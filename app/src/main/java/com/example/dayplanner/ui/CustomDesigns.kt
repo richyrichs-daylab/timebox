@@ -3,6 +3,7 @@ package com.example.dayplanner.ui
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.provider.DocumentsContract
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.example.dayplanner.data.Design
@@ -30,12 +31,12 @@ class CustomEntry(
 }
 
 /**
- * Importierte Design-Dateien (reine Daten, kein Code). Format: JSON mit
- * "format": "timebox-design" und "version": 1.
+ * Design-Dateien (reine Daten, kein Code). Format: JSON mit "format": "timebox-design" und "version": 1.
  *
- * Die App kopiert die Datei NICHT. Sie merkt sich nur ihren Ort und liest sie jedes Mal dort.
- * Liegt die Datei nicht mehr dort (gelöscht, verschoben, umbenannt), ist das Design nicht verfügbar
- * und die App nimmt das Standarddesign.
+ * Die App kopiert nie eine Datei. Sie merkt sich einen Design-Ordner (dauerhafter Zugriff) und liest
+ * alle Designs direkt dort. Zusätzlich bleiben früher einzeln importierte Dateien erhalten, solange
+ * sie lesbar sind. Fehlt die Datei eines Designs, ist es nicht verfügbar und die App nimmt das
+ * Standarddesign. Die App löscht oder vergisst nie etwas von sich aus.
  */
 object CustomDesigns {
     private const val MAX_BYTES = 200_000
@@ -43,6 +44,10 @@ object CustomDesigns {
     private val cache = ConcurrentHashMap<String, Skin>()
     private var migrated = false
 
+    private fun prefs(context: Context) =
+        context.applicationContext.getSharedPreferences("designs_prefs", Context.MODE_PRIVATE)
+
+    /** Verzeichnis: Design-ID zu Ort der Datei (aus dem Design-Ordner oder früher einzeln importiert). */
     private fun indexFile(context: Context) =
         File(context.applicationContext.filesDir, "designs_index.json")
 
@@ -188,21 +193,71 @@ object CustomDesigns {
         Loaded(null, false)
     }
 
-    /** Entfernt ein Design dauerhaft aus der Liste, weil seine Datei nicht mehr existiert. */
-    private fun forget(context: Context, id: String) {
-        val map = readIndex(context)
-        val uriString = map.remove(id) ?: return
-        writeIndex(context, map)
-        cache.remove(id)
+    // ------------------------------------------------------------ Design-Ordner
+
+    /**
+     * Merkt sich den Design-Ordner (dauerhafter Zugriff, es wird nichts kopiert) und liest ihn ein.
+     * Gibt die Zahl der gefundenen Designs zurück.
+     */
+    fun setTree(context: Context, tree: Uri): Int {
         runCatching {
-            context.contentResolver.releasePersistableUriPermission(
-                Uri.parse(uriString),
-                Intent.FLAG_GRANT_READ_URI_PERMISSION,
-            )
+            context.contentResolver.takePersistableUriPermission(tree, Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
+        prefs(context).edit().putString("tree", tree.toString()).apply()
+        cache.clear()
+        return scanTree(context)
     }
 
-    /** Merkt sich den Ort der gewählten Datei. Es wird nichts kopiert. */
+    /**
+     * Liest alle Dateien im Design-Ordner und trägt jede gültige Design-Datei samt Ort ins Verzeichnis ein.
+     * Gibt die Zahl der gültigen Designs im Ordner zurück. Ist der Ordner nicht erreichbar, passiert nichts.
+     */
+    private fun scanTree(context: Context): Int {
+        val treeString = prefs(context).getString("tree", null) ?: return 0
+        val tree = Uri.parse(treeString)
+        var found = 0
+        try {
+            val rootId = DocumentsContract.getTreeDocumentId(tree)
+            val children = DocumentsContract.buildChildDocumentsUriUsingTree(tree, rootId)
+            val map = readIndex(context)
+            var changed = false
+            context.contentResolver.query(
+                children,
+                arrayOf(
+                    DocumentsContract.Document.COLUMN_DOCUMENT_ID,
+                    DocumentsContract.Document.COLUMN_DISPLAY_NAME,
+                    DocumentsContract.Document.COLUMN_MIME_TYPE,
+                ),
+                null,
+                null,
+                null,
+            )?.use { c ->
+                while (c.moveToNext()) {
+                    val docId = c.getString(0) ?: continue
+                    val name = c.getString(1).orEmpty()
+                    val mime = c.getString(2).orEmpty()
+                    if (mime == DocumentsContract.Document.MIME_TYPE_DIR) continue
+                    if (!name.endsWith(".json", ignoreCase = true)) continue
+                    val docUri = DocumentsContract.buildDocumentUriUsingTree(tree, docId).toString()
+                    val entry = loadFrom(context, docUri).entry ?: continue
+                    found++
+                    cache[entry.id] = entry.skin
+                    if (map[entry.id] != docUri) {
+                        map[entry.id] = docUri
+                        changed = true
+                    }
+                }
+            }
+            if (changed) writeIndex(context, map)
+        } catch (e: Exception) {
+            // Ordner nicht erreichbar: bereits bekannte Designs bleiben, solange ihre Dateien lesbar sind.
+        }
+        return found
+    }
+
+    // ------------------------------------------------------------ Einzelne Dateien (früher)
+
+    /** Merkt sich den Ort einer einzelnen Datei. Es wird nichts kopiert. */
     suspend fun import(context: Context, uri: Uri): CustomEntry? = withContext(Dispatchers.IO) {
         try {
             migrate(context)
@@ -221,19 +276,20 @@ object CustomDesigns {
         }
     }
 
+    // ------------------------------------------------------------ Abfragen
+
     /** Alle Designs, deren Datei gerade tatsächlich lesbar ist. */
     fun list(context: Context): List<CustomEntry> {
         migrate(context)
+        scanTree(context)
         val out = ArrayList<CustomEntry>()
         for ((id, uriString) in readIndex(context).entries.toList()) {
-            val loaded = loadFrom(context, uriString)
-            val entry = loaded.entry
+            val entry = loadFrom(context, uriString).entry
             if (entry != null && entry.id == id) {
                 cache[id] = entry.skin
                 out.add(entry)
             } else {
                 cache.remove(id)
-                if (loaded.gone) forget(context, id)
             }
         }
         return out.sortedBy { it.id }
@@ -244,13 +300,11 @@ object CustomDesigns {
         cache[id]?.let { return it }
         migrate(context)
         val uriString = readIndex(context)[id] ?: return null
-        val loaded = loadFrom(context, uriString)
-        val entry = loaded.entry
+        val entry = loadFrom(context, uriString).entry
         if (entry != null && entry.id == id) {
             cache[id] = entry.skin
             return entry.skin
         }
-        if (loaded.gone) forget(context, id)
         return null
     }
 }
