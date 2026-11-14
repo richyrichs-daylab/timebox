@@ -1,0 +1,63 @@
+name: Create signing key
+
+on:
+  workflow_dispatch:
+    inputs:
+      overwrite:
+        description: 'Nur "ja" eintippen, um einen vorhandenen Schlüssel zu ersetzen (dann müssen alle Nutzer neu installieren)'
+        required: false
+        default: 'nein'
+
+permissions:
+  contents: read
+
+jobs:
+  create:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Prüfen
+        env:
+          GH_TOKEN: ${{ secrets.ADMIN_TOKEN }}
+          OVERWRITE: ${{ inputs.overwrite }}
+        run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo "::error::Das Secret ADMIN_TOKEN fehlt."
+            exit 1
+          fi
+          if gh secret list -R "$GITHUB_REPOSITORY" | grep -q '^KEYSTORE_BASE64'; then
+            if [ "$OVERWRITE" != "ja" ]; then
+              echo "::error::Es gibt schon einen Schlüssel. Abbruch, damit er nicht versehentlich ersetzt wird."
+              exit 1
+            fi
+          fi
+
+      - name: Schlüssel erzeugen und als Secrets speichern
+        env:
+          GH_TOKEN: ${{ secrets.ADMIN_TOKEN }}
+        run: |
+          set -euo pipefail
+          PASS=$(openssl rand -hex 16)
+          echo "::add-mask::$PASS"
+          KS="$RUNNER_TEMP/release.keystore"
+          keytool -genkeypair -keystore "$KS" -storetype PKCS12 \
+            -storepass "$PASS" -keypass "$PASS" -alias timebox \
+            -keyalg RSA -keysize 3072 -validity 36500 \
+            -dname "CN=Timebox, O=DayLab, C=NL"
+          base64 -w0 "$KS" | gh secret set KEYSTORE_BASE64 -R "$GITHUB_REPOSITORY"
+          printf '%s' "$PASS" | gh secret set KEYSTORE_PASSWORD -R "$GITHUB_REPOSITORY"
+          printf '%s' "timebox" | gh secret set KEY_ALIAS -R "$GITHUB_REPOSITORY"
+          printf '%s' "$PASS" | gh secret set KEY_PASSWORD -R "$GITHUB_REPOSITORY"
+          FP=$(keytool -list -v -keystore "$KS" -storepass "$PASS" | grep -m1 'SHA256:' | sed 's/^[[:space:]]*//')
+          {
+            echo "### Schlüssel erstellt"
+            echo "Zertifikat-Fingerabdruck (öffentlich, zum Vergleichen):"
+            echo
+            echo "\`$FP\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+          rm -f "$KS"
