@@ -58,7 +58,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onStart() {
         super.onStart()
-        // Premium-Designs gelten nur, solange ihre Datei wirklich noch auf dem Telefon liegt.
+        // Designs gelten nur, solange ihre Datei wirklich noch auf dem Telefon liegt.
         CustomDesigns.invalidate()
         designsVersion++
         vm.reloadDesigns()
@@ -81,12 +81,14 @@ private fun PlannerRoot(vm: PlannerViewModel, settingsRequest: Int, designsVersi
     val settings by vm.settings.collectAsState()
     val password by vm.password.collectAsState()
     val unlocked by vm.unlocked.collectAsState()
+    val designs by vm.customDesigns.collectAsState()
     val context = LocalContext.current
     val dark = isSystemInDarkTheme()
 
     val s = settings
     val pw = password
-    val skin = remember(s?.customDesign, s?.design, s?.themeMode, dark, designsVersion) {
+    // Wird neu bestimmt, sobald sich die Design-Liste ändert (z. B. nach dem Einlesen des Design-Ordners).
+    val skin = remember(s?.customDesign, s?.design, s?.themeMode, dark, designsVersion, designs) {
         if (s == null) resolveSkin(Design.STANDARD, 0, dark) else resolveSkinFor(context, s, dark)
     }
 
