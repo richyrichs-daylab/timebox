@@ -82,7 +82,9 @@ import com.example.dayplanner.data.Design
 import com.example.dayplanner.data.PasswordInfo
 import com.example.dayplanner.data.SettingsRepository
 import com.example.dayplanner.wallpaper.TimeboxWallpaperService
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -180,11 +182,16 @@ fun SettingsScreen(vm: PlannerViewModel, onBack: () -> Unit) {
             }
         }
     }
-    val designLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.OpenDocument()
+    // Design-Ordner: einmal wählen, danach liest die App alle Designs daraus (der Zugriff bleibt dauerhaft).
+    val designFolderLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.OpenDocumentTree()
     ) { uri ->
         if (uri != null) {
-            vm.importDesign(uri) { ok -> toast(if (ok) R.string.design_import_ok else R.string.design_import_failed) }
+            scope.launch {
+                val count = withContext(Dispatchers.IO) { CustomDesigns.setTree(context, uri) }
+                vm.reloadDesigns()
+                toast(if (count > 0) R.string.design_folder_ok else R.string.design_folder_empty)
+            }
         }
     }
     // Ordnerwahl für die automatischen Backups: Erst nach der Bestätigung eines Ordners
@@ -576,7 +583,7 @@ fun SettingsScreen(vm: PlannerViewModel, onBack: () -> Unit) {
 
             Spacer(Modifier.height(8.dp))
 
-            // ---------- Zweite Reihe: Import-Feld (+) und importierte Designs ----------
+            // ---------- Zweite Reihe: Ordner-Feld (+) und alle Designs aus dem Ordner ----------
             val tileItems: List<CustomEntry?> = listOf<CustomEntry?>(null) + customDesigns
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 tileItems.chunked(6).forEach { chunk ->
@@ -584,9 +591,7 @@ fun SettingsScreen(vm: PlannerViewModel, onBack: () -> Unit) {
                         chunk.forEach { entry ->
                             if (entry == null) {
                                 ImportTile(Modifier.weight(1f).aspectRatio(0.6f)) {
-                                    designLauncher.launch(
-                                        arrayOf("application/json", "text/plain", "application/octet-stream", "*/*")
-                                    )
+                                    designFolderLauncher.launch(null)
                                 }
                             } else {
                                 SkinTile(
@@ -872,7 +877,7 @@ private fun NumberBox(value: Int, range: IntRange, onValue: (Int) -> Unit) {
     )
 }
 
-/** Kachel mit Vorschau eines Designs (eingebaut oder importiert). */
+/** Kachel mit Vorschau eines Designs (eingebaut oder aus dem Design-Ordner). */
 @Composable
 private fun SkinTile(
     sk: Skin,
@@ -921,11 +926,11 @@ private fun SkinTile(
     }
 }
 
-/** Hellgraues leeres Feld mit deutlichem Plus: öffnet die Dateiauswahl für gekaufte Designs. */
+/** Hellgraues leeres Feld mit deutlichem Plus: öffnet die Ordnerauswahl für die Designs. */
 @Composable
 private fun ImportTile(modifier: Modifier, onClick: () -> Unit) {
     val ink = LocalSkin.current.ink
-    val description = stringResource(R.string.cd_import_design)
+    val description = stringResource(R.string.cd_design_folder)
     Box(
         modifier
             .background(Color(0xFF9E9E9E).copy(alpha = 0.3f))
