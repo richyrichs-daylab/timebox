@@ -35,7 +35,7 @@ jobs:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
         run: |
           if [ -z "$KEYSTORE_BASE64" ]; then
-            echo "Das Secret KEYSTORE_BASE64 fehlt."
+            echo "::error::Das Secret KEYSTORE_BASE64 fehlt. Erst den Workflow Create signing key ausführen."
             exit 1
           fi
           echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.keystore"
@@ -47,6 +47,22 @@ jobs:
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: gradle assembleRelease --console=plain
+
+      - name: Signatur prüfen
+        run: |
+          APKSIGNER=$(ls -d "$ANDROID_HOME"/build-tools/*/apksigner 2>/dev/null | sort -V | tail -1) || true
+          if [ -z "$APKSIGNER" ]; then
+            echo "::warning::apksigner nicht gefunden, die Signatur wurde nicht geprüft."
+            exit 0
+          fi
+          OUT=$("$APKSIGNER" verify --print-certs app/build/outputs/apk/release/app-release.apk)
+          if echo "$OUT" | grep -q 'CN=Android Debug'; then
+            echo "::error::Die APK ist mit dem Wegwerf-Schlüssel signiert. Release abgebrochen."
+            exit 1
+          fi
+          SHA=$(echo "$OUT" | grep -m1 'certificate SHA-256 digest' | sed 's/.*: //' | tr 'a-f' 'A-F' | sed 's/../&:/g; s/:$//') || true
+          echo "### Signatur: eigener Schlüssel" >> "$GITHUB_STEP_SUMMARY"
+          echo "SHA256: $SHA" | tee -a "$GITHUB_STEP_SUMMARY"
 
       - name: Release veröffentlichen
         env:
