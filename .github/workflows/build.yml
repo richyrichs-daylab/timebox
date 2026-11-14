@@ -31,6 +31,8 @@ jobs:
           if [ -n "$KEYSTORE_BASE64" ]; then
             echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.keystore"
             echo "KEYSTORE_FILE=$RUNNER_TEMP/release.keystore" >> "$GITHUB_ENV"
+          else
+            echo "::warning::Kein Signaturschlüssel in den Secrets. Dieser Build ist mit einem Wegwerf-Schlüssel signiert und lässt sich nicht über ein Release aktualisieren."
           fi
 
       - name: APK bauen
@@ -39,6 +41,23 @@ jobs:
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: gradle assembleRelease --console=plain
+
+      - name: Signatur prüfen
+        run: |
+          APKSIGNER=$(ls -d "$ANDROID_HOME"/build-tools/*/apksigner 2>/dev/null | sort -V | tail -1) || true
+          if [ -z "$APKSIGNER" ]; then
+            echo "::warning::apksigner nicht gefunden, die Signatur wurde nicht geprüft."
+            exit 0
+          fi
+          OUT=$("$APKSIGNER" verify --print-certs app/build/outputs/apk/release/app-release.apk)
+          SHA=$(echo "$OUT" | grep -m1 'certificate SHA-256 digest' | sed 's/.*: //' | tr 'a-f' 'A-F' | sed 's/../&:/g; s/:$//') || true
+          if echo "$OUT" | grep -q 'CN=Android Debug'; then
+            echo "### Signatur: Wegwerf-Schlüssel (Debug)" >> "$GITHUB_STEP_SUMMARY"
+            echo "Dieser Build ist NICHT mit deinem Schlüssel signiert." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "### Signatur: eigener Schlüssel" >> "$GITHUB_STEP_SUMMARY"
+          fi
+          echo "SHA256: $SHA" | tee -a "$GITHUB_STEP_SUMMARY"
 
       - name: APK hochladen
         uses: actions/upload-artifact@v4
