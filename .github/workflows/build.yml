@@ -35,6 +35,9 @@ jobs:
             echo "::warning::Kein Signaturschlüssel in den Secrets. Dieser Build ist mit einem Wegwerf-Schlüssel signiert und lässt sich nicht über ein Release aktualisieren."
           fi
 
+      - name: Sprachdateien erzeugen
+        run: python3 tools/gen_i18n.py
+
       - name: APK bauen
         env:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
