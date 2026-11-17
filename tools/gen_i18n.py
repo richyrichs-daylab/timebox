@@ -50,9 +50,26 @@ def parse(path):
     return data
 
 
+def autofill(entries, base):
+    """Gleicher englischer Text -> gleiche Uebersetzung (spart Doppelungen); Markenname Timebox bleibt."""
+    out = dict(entries)
+    for k, v in base.items():
+        if k in out:
+            continue
+        if v == "Timebox" and entries:
+            out[k] = v
+            continue
+        for j, w in base.items():
+            if j in entries and w == v:
+                out[k] = entries[j]
+                break
+    return out
+
+
 def write(q, entries, base):
     d = os.path.join(RES, folder(q))
     existing = read_xml_dir(d) if os.path.isdir(d) else {}
+    entries = autofill(entries, base)
     rows = []
     for k, v in entries.items():
         if k not in base:
